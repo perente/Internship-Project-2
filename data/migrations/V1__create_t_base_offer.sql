@@ -1,4 +1,4 @@
--- V1: create T_BASE_OFFER (columns + constraints you showed)
+-- V1: create T_BASE_OFFER 
 
 CREATE TABLE T_BASE_OFFER (
   ID                          VARCHAR2(255) NOT NULL,
@@ -75,7 +75,4 @@ CREATE TABLE T_BASE_OFFER (
     CHECK (CAN_DOWNGRADE IN ('YES','NO','UNDEFINED'))
 );
 
--- (opsiyonel) faydalı indexler
-CREATE INDEX IX_T_BASE_OFFER_CODE       ON T_BASE_OFFER (CODE);
-CREATE INDEX IX_T_BASE_OFFER_STATUS     ON T_BASE_OFFER (STATUS);
-CREATE INDEX IX_T_BASE_OFFER_ACTIVE     ON T_BASE_OFFER (ACTIVE);
+
