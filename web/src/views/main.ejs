@@ -1,9 +1,67 @@
 <!DOCTYPE html>
-<html>
+<html lang="TR">
 <head>
     <title><%= title %></title>
 </head>
 <body>
 <h1><%= message %></h1>
+
+<form id="tableForm">
+    <label for="tableSelect">Select table:</label>
+    <select id="tableSelect" name="tableName" required>
+        <% tables.forEach(function(table){ %>
+            <option value="<%= table %>"><%= table %></option>
+        <% }); %>
+    </select>
+
+    <label for="rowId">Enter ID (Empty for list all data):</label>
+    <input type="text" id="rowId" name="id">
+
+    <button type="submit">Submit</button>
+</form>
+
+<div id="result"></div>
+
+<script>
+    const form = document.getElementById('tableForm');
+    const resultDiv = document.getElementById('result');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const tableName = document.getElementById('tableSelect').value;
+        const id = document.getElementById('rowId').value.trim();
+
+        try {
+            const response = await fetch(`http://localhost:3001/table_data?tableName=${encodeURIComponent(tableName)}&id=${encodeURIComponent(id)}`);
+            const data = await response.json();
+
+            if (!data.ok) {
+                resultDiv.innerHTML = `<p style="color:red">${data.error}</p>`;
+                return;
+            }
+
+            const columns = data.columns || [];
+            const rows = data.rows || [];
+
+            let html = "<table border='1'><thead><tr>";
+            columns.forEach(col => { html += `<th>${col}</th>`; });
+            html += "</tr></thead><tbody>";
+
+            rows.forEach(row => {
+                html += "<tr>";
+                row.forEach(cell => { html += `<td>${cell}</td>`; });
+                html += "</tr>";
+            });
+
+            html += "</tbody></table>";
+            resultDiv.innerHTML = html;
+
+        } catch (err) {
+            resultDiv.innerHTML = `<p style="color:red">Error fetching table info</p>`;
+            console.error(err);
+        }
+    });
+</script>
 </body>
 </html>

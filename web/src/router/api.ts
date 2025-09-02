@@ -19,7 +19,9 @@ export function createApiServer() {
 
             await conn.close();
 
-            const tables = (query.rows as string[][])?.map(row => row[0]) ?? [];
+            const tables = (query.rows as string[][])
+                ?.map(row => row[0])
+                .filter(name => name.startsWith("T")) ?? [];
 
             res.json({
                 ok: true,
@@ -30,16 +32,23 @@ export function createApiServer() {
         }
     });
 
-    app.get("/table_info", async (req, res) => {
+    app.get("/table_data", async (req, res) => {
         try {
             const tableName = req.query.tableName as string;
             const id = req.query.id as string;
 
             const conn = await getConn();
-            const query = await conn.execute(
-                `SELECT * FROM ${tableName} WHERE id = :id`,
-                { id }
-            );
+            let query
+            if (id !== undefined && id !== "") {
+                query = await conn.execute(
+                    `SELECT * FROM ${tableName} WHERE id = :id`,
+                    { id }
+                );
+            } else {
+                query = await conn.execute(
+                    `SELECT * FROM ${tableName}`
+                );
+            }
             await conn.close();
 
             const columns = query.metaData?.map(col => col.name) ?? [];
