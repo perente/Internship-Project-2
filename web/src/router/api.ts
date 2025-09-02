@@ -10,16 +10,16 @@ export function createApiServer() {
 
     app.get("/tables", async (_req, res) => {
         try {
-            const c = await getConn();
+            const conn = await getConn();
 
-            const r = await c.execute(
+            const query = await conn.execute(
                 `SELECT table_name FROM user_tables ORDER BY table_name`,
                 [] // bind yok
             );
 
-            await c.close();
+            await conn.close();
 
-            const tables = r.rows?.map(row => row[0]) ?? [];
+            const tables = (query.rows as string[][])?.map(row => row[0]) ?? [];
 
             res.json({
                 ok: true,
