@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
 
-// .env'i kökten (../.env) okumaya çalış; yoksa backend/.env
 const rootEnv = path.resolve(process.cwd(), "..", ".env");
 if (fs.existsSync(rootEnv)) {
   dotenv.config({ path: rootEnv });
@@ -18,7 +17,7 @@ async function getPool(): Promise<oracledb.Pool> {
     pool = await oracledb.createPool({
       user: process.env.DB_USER,
       password: process.env.DB_PASS,
-      connectString: process.env.DB_CONNECT, // örn: localhost:1521/XEPDB1
+      connectString: process.env.DB_CONNECT,
       poolMin: 1,
       poolMax: 5,
       poolIncrement: 1
