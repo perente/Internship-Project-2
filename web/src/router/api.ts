@@ -8,7 +8,9 @@ export function createApiServer() {
     app.use(cors({ origin: "http://localhost:3000" }));
     app.use(express.json());
 
-    app.get("/tables", async (_req, res) => {
+    const getRouter  = express.Router();
+
+    getRouter.get("/tables", async (_req, res) => {
         try {
             const conn = await getConn();
 
@@ -32,7 +34,7 @@ export function createApiServer() {
         }
     });
 
-    app.get("/table_data", async (req, res) => {
+    getRouter.get("/table_data", async (req, res) => {
         try {
             const tableName = req.query.tableName as string;
             const id = req.query.id as string;
@@ -59,9 +61,15 @@ export function createApiServer() {
         }
     });
 
+    app.use("/api/get", getRouter)
+
     app.get("/shutdown", async (_req, res) => {
         await closePool();
         res.json({ ok: true });
+    });
+
+    app.get(/(.*)/, async (_req, res) => {
+        res.json({ ok: false, error: "Wrong API url!" });
     });
 
     return app;

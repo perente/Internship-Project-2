@@ -56,7 +56,7 @@
 
     async function fetchTableData(tableName, id="") {
         try {
-            const response = await fetch(`http://localhost:3001/table_data?tableName=${encodeURIComponent(tableName)}&id=${encodeURIComponent(id)}`);
+            const response = await fetch(`http://localhost:3001/api/get/table_data?tableName=${encodeURIComponent(tableName)}&id=${encodeURIComponent(id)}`);
             const data = await response.json();
 
             if (!data.ok) {

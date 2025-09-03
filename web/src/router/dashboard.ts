@@ -17,7 +17,7 @@ export function createDashboardServer() {
 
     app.get("/tables", async (_req, res) => {
         try {
-            const response = await fetch("http://localhost:3001/tables");
+            const response = await fetch("http://localhost:3001/api/get/tables");
             const data = await response.json();
 
             const tables = data.ok ? data.tables : [];
