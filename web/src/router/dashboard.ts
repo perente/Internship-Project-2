@@ -15,19 +15,23 @@ export function createDashboardServer() {
 
             const tables = data.ok ? data.tables : [];
 
-            res.render("main", {
+            res.render("dashboard", {
                 title: "Dashboard",
-                message: "Hello World!",
+                activePage: "dashboard",
                 tables
             });
         } catch (err) {
             console.error(err);
-            res.render("main", {
+            res.render("dashboard", {
                 title: "Dashboard",
                 message: "Error fetching tables",
                 tables: []
             });
         }
+    });
+
+    app.get(/(.*)/, async (_req, res) => {
+        res.redirect("/")
     });
 
     return app;
