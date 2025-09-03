@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('layouts/head', {title: "Tables"}) %>
+<body class="flex h-screen bg-gray-100">
+
+<%- include("layouts/sidebar") %>
+
+<div class="flex flex-col flex-1">
+
+    <%- include("layouts/header") %>
+
+    <main class="p-6 overflow-auto">
+
+        <form id="tableForm" class="bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto mb-6">
+            <div class="mb-4">
+                <label for="tableSelect" class="block font-semibold mb-1">Select table:</label>
+                <select id="tableSelect" name="tableName" required
+                        class="w-full border border-gray-300 rounded px-3 py-2">
+                    <% tables.forEach(function(table){ %>
+                        <option value="<%= table %>"><%= table %></option>
+                    <% }); %>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label for="rowId" class="block font-semibold mb-1">
+                    Enter ID (Leave blank to list all data):
+                </label>
+                <input type="text" id="rowId" name="id"
+                       class="w-full border border-gray-300 rounded px-3 py-2">
+            </div>
+
+            <div class="flex space-x-2">
+                <button type="submit"
+                        class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">
+                    Show Data
+                </button>
+
+                <button type="button" id="resetBtn"
+                        class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">
+                    Reset
+                </button>
+            </div>
+        </form>
+
+        <div id="result" class="max-w-6xl mx-auto overflow-auto"></div>
+
+    </main>
+</div>
+
+<script>
+    const form = document.getElementById('tableForm');
+    const resultDiv = document.getElementById('result');
+    const resetBtn = document.getElementById('resetBtn');
+    const listAllBtn = document.getElementById('listAllBtn');
+
+    async function fetchTableData(tableName, id="") {
+        try {
+            const response = await fetch(`http://localhost:3001/table_data?tableName=${encodeURIComponent(tableName)}&id=${encodeURIComponent(id)}`);
+            const data = await response.json();
+
+            if (!data.ok) {
+                resultDiv.innerHTML = `<p class="text-red-500">${data.error}</p>`;
+                return;
+            }
+
+            const columns = data.columns || [];
+            const rows = data.rows || [];
+
+            if (rows.length === 0) {
+                resultDiv.innerHTML = `<p class="text-gray-700 text-center font-semibold">Veri bulunamadı</p>`;
+                return;
+            }
+
+            let html = `<table class="min-w-full border border-gray-300 text-left table-auto"><thead class="bg-gray-200"><tr>`;
+            columns.forEach(col => { html += `<th class="px-4 py-2 border">${col}</th>`; });
+            html += `</tr></thead><tbody>`;
+
+            rows.forEach(row => {
+                html += "<tr>";
+                row.forEach(cell => { html += `<td class="px-4 py-2 border">${cell}</td>`; });
+                html += "</tr>";
+            });
+
+            html += "</tbody></table>";
+            resultDiv.innerHTML = html;
+
+        } catch (err) {
+            resultDiv.innerHTML = `<p class="text-red-500">Error fetching table info</p>`;
+            console.error(err);
+        }
+    }
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const tableName = document.getElementById('tableSelect').value;
+        const id = document.getElementById('rowId').value.trim();
+        fetchTableData(tableName, id);
+    });
+
+    resetBtn.addEventListener('click', () => {
+        document.getElementById('rowId').value = "";
+        resultDiv.innerHTML = "";
+    });
+
+    listAllBtn.addEventListener('click', () => {
+        const tableName = document.getElementById('tableSelect').value;
+        fetchTableData(tableName);
+    });
+</script>
+</body>
+</html>
