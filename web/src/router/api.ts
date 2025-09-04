@@ -71,6 +71,40 @@ export function createApiServer() {
         }
     });
 
+    getRouter.get("/table_column_suggestions", async (req, res) => {
+        try {
+            const tableName = req.query.tableName as string;
+            const columnName = req.query.columnName as string;
+            const queryText = req.query.query as string || "";
+
+            if(!tableName || !columnName) {
+                return res.json({ ok: false, error: "Missing tableName or columnName" });
+            }
+
+            const conn = await getConn();
+
+            const sql = `
+                SELECT ${columnName} AS val, COUNT(*) AS freq
+                FROM ${tableName}
+                WHERE UPPER(${columnName}) LIKE UPPER(:q) AND ${columnName} IS NOT NULL
+                GROUP BY ${columnName}
+                ORDER BY freq DESC
+            `;
+
+            const result = await conn.execute(sql, { q: `%${queryText}%` });
+
+            await conn.close();
+
+            const suggestions = (result.rows || [])
+                .slice(0, 3)
+                .map(row => row[0]);
+
+            res.json({ ok: true, suggestions });
+
+        } catch(e:any) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
 
     app.use("/api/get", getRouter)
 

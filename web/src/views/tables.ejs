@@ -11,7 +11,7 @@
 
     <main class="p-6 overflow-auto">
 
-        <form id="tableForm" class="bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto mb-6">
+        <form id="tableForm" class="bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto mb-6 relative">
             <div class="mb-4 flex items-start space-x-2">
                 <div class="flex-1">
                     <label for="tableSelect" class="block font-semibold mb-1">Select table:</label>
@@ -39,9 +39,11 @@
                 </select>
             </div>
 
-            <div class="mb-4">
+            <div class="mb-4 relative">
                 <input type="text" id="rowValue" name="value"
                        class="w-full border border-gray-300 rounded px-3 py-2" placeholder="Enter value for column (optional)">
+                <!-- Suggestions dropdown -->
+                <div id="suggestionBox" class="absolute w-full bg-white border rounded shadow mt-1 z-50 hidden"></div>
             </div>
 
             <div class="flex space-x-2">
@@ -69,9 +71,12 @@
     const tableSelect = document.getElementById('tableSelect');
     const columnSelect = document.getElementById('columnSelect');
     const showAllBtn = document.getElementById('showAllBtn');
+    const rowValueInput = document.getElementById('rowValue');
+    const suggestionBox = document.getElementById('suggestionBox');
 
     const tablesData = <%- JSON.stringify(tables) %>;
 
+    // Update column select when table changes
     tableSelect.addEventListener('change', () => {
         const tableName = tableSelect.value;
         const columns = tablesData[tableName] || [];
@@ -86,6 +91,7 @@
 
     tableSelect.dispatchEvent(new Event('change'));
 
+    // Fetch table data
     async function fetchTableData(tableName, columnName="", value="") {
         try {
             let url = `http://localhost:3001/api/get/table_data?tableName=${encodeURIComponent(tableName)}`;
@@ -127,23 +133,78 @@
         }
     }
 
+    // Form submit
     form.addEventListener('submit', (e) => {
         e.preventDefault();
         const tableName = tableSelect.value;
         const columnName = columnSelect.value;
-        const value = document.getElementById('rowValue').value.trim();
+        const value = rowValueInput.value.trim();
         fetchTableData(tableName, columnName, value);
     });
 
+    // Show all
     showAllBtn.addEventListener('click', () => {
         const tableName = tableSelect.value;
         fetchTableData(tableName);
     });
 
+    // Reset
     resetBtn.addEventListener('click', () => {
-        document.getElementById('rowValue').value = "";
+        rowValueInput.value = "";
         columnSelect.value = "";
+        suggestionBox.innerHTML = "";
+        suggestionBox.style.display = "none";
         resultDiv.innerHTML = "";
+    });
+
+    // Autocomplete
+    let debounceTimer;
+    rowValueInput.addEventListener('input', () => {
+        const tableName = tableSelect.value;
+        const columnName = columnSelect.value;
+        const query = rowValueInput.value.trim();
+
+        suggestionBox.innerHTML = "";
+        suggestionBox.style.display = "none";
+        if(!columnName || !query) return;
+
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+            try {
+                const response = await fetch(`http://localhost:3001/api/get/table_column_suggestions?tableName=${encodeURIComponent(tableName)}&columnName=${encodeURIComponent(columnName)}&query=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                if(!data.ok) return;
+
+                suggestionBox.innerHTML = "";
+                data.suggestions.forEach(s => {
+                    const div = document.createElement('div');
+                    div.className = "px-2 py-1 hover:bg-gray-200 cursor-pointer";
+                    div.textContent = s;
+                    div.addEventListener('click', () => {
+                        rowValueInput.value = s;
+                        suggestionBox.innerHTML = "";
+                        suggestionBox.style.display = "none";
+                        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+                    });
+                    suggestionBox.appendChild(div);
+                });
+
+                if(data.suggestions.length > 0) {
+                    suggestionBox.style.display = "block";
+                }
+
+            } catch(e) {
+                console.error(e);
+            }
+        }, 300);
+    });
+
+    // Hide suggestions if click outside
+    document.addEventListener('click', (e) => {
+        if(!rowValueInput.contains(e.target) && !suggestionBox.contains(e.target)) {
+            suggestionBox.innerHTML = "";
+            suggestionBox.style.display = "none";
+        }
     });
 </script>
 </body>
