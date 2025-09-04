@@ -15,19 +15,23 @@ export function createApiServer() {
             const conn = await getConn();
 
             const query = await conn.execute(
-                `SELECT table_name FROM user_tables ORDER BY table_name`,
-                [] // bind yok
+                `SELECT table_name, column_name
+                 FROM user_tab_columns
+                 WHERE table_name LIKE 'T%'
+                 ORDER BY table_name, column_id`
             );
 
             await conn.close();
 
-            const tables = (query.rows as string[][])
-                ?.map(row => row[0])
-                .filter(name => name.startsWith("T")) ?? [];
+            const tablesWithColumns: Record<string, string[]> = {};
+            (query.rows as string[][])?.forEach(([tableName, columnName]) => {
+                if (!tablesWithColumns[tableName]) tablesWithColumns[tableName] = [];
+                tablesWithColumns[tableName].push(columnName);
+            });
 
             res.json({
                 ok: true,
-                tables
+                tables: tablesWithColumns
             });
         } catch (e: any) {
             res.status(500).json({ ok: false, error: e.message });
@@ -37,29 +41,36 @@ export function createApiServer() {
     getRouter.get("/table_data", async (req, res) => {
         try {
             const tableName = req.query.tableName as string;
-            const id = req.query.id as string;
+            const columnName = (req.query.columnName as string) || "";
+            const value = (req.query.value as string) || "";
 
             const conn = await getConn();
-            let query
-            if (id !== undefined && id !== "") {
-                query = await conn.execute(
-                    `SELECT * FROM ${tableName} WHERE id = :id`,
-                    { id }
-                );
+            let query;
+
+            if (columnName && value) {
+                if (value != "null") {
+                    query = await conn.execute(
+                        `SELECT * FROM ${tableName} WHERE ${columnName} = :val`,
+                        { val: value }
+                    );
+                } else {
+                    query = await conn.execute(
+                        `SELECT * FROM ${tableName} WHERE ${columnName} IS NULL`
+                    );
+                }
             } else {
-                query = await conn.execute(
-                    `SELECT * FROM ${tableName}`
-                );
+                query = await conn.execute(`SELECT * FROM ${tableName}`);
             }
+
             await conn.close();
 
             const columns = query.metaData?.map(col => col.name) ?? [];
-
-            res.json({ ok: true, columns: columns, rows: query.rows });
+            res.json({ ok: true, columns, rows: query.rows });
         } catch (e: any) {
             res.status(500).json({ ok: false, error: e.message });
         }
     });
+
 
     app.use("/api/get", getRouter)
 

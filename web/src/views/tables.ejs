@@ -12,22 +12,36 @@
     <main class="p-6 overflow-auto">
 
         <form id="tableForm" class="bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto mb-6">
-            <div class="mb-4">
-                <label for="tableSelect" class="block font-semibold mb-1">Select table:</label>
-                <select id="tableSelect" name="tableName" required
+            <div class="mb-4 flex items-start space-x-2">
+                <div class="flex-1">
+                    <label for="tableSelect" class="block font-semibold mb-1">Select table:</label>
+                    <select id="tableSelect" name="tableName" required
+                            class="w-full border border-gray-300 rounded px-3 py-2">
+                        <% Object.keys(tables).forEach(function(tableName){ %>
+                            <option value="<%= tableName %>"><%= tableName %></option>
+                        <% }); %>
+                    </select>
+                </div>
+                <button type="button" id="showAllBtn" title="List All Data"
+                        class="mt-6 text-gray-600 hover:text-gray-900 p-2 border rounded">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="mb-2">
+                <label for="columnSelect" class="block font-semibold mb-1">Filter by column & value (optional):</label>
+                <select id="columnSelect" name="columnName"
                         class="w-full border border-gray-300 rounded px-3 py-2">
-                    <% tables.forEach(function(table){ %>
-                        <option value="<%= table %>"><%= table %></option>
-                    <% }); %>
+                    <option value="">-- No Filter --</option>
                 </select>
             </div>
 
             <div class="mb-4">
-                <label for="rowId" class="block font-semibold mb-1">
-                    Enter ID (Leave blank to list all data):
-                </label>
-                <input type="text" id="rowId" name="id"
-                       class="w-full border border-gray-300 rounded px-3 py-2">
+                <input type="text" id="rowValue" name="value"
+                       class="w-full border border-gray-300 rounded px-3 py-2" placeholder="Enter value for column (optional)">
             </div>
 
             <div class="flex space-x-2">
@@ -52,11 +66,33 @@
     const form = document.getElementById('tableForm');
     const resultDiv = document.getElementById('result');
     const resetBtn = document.getElementById('resetBtn');
-    const listAllBtn = document.getElementById('listAllBtn');
+    const tableSelect = document.getElementById('tableSelect');
+    const columnSelect = document.getElementById('columnSelect');
+    const showAllBtn = document.getElementById('showAllBtn');
 
-    async function fetchTableData(tableName, id="") {
+    const tablesData = <%- JSON.stringify(tables) %>;
+
+    tableSelect.addEventListener('change', () => {
+        const tableName = tableSelect.value;
+        const columns = tablesData[tableName] || [];
+        columnSelect.innerHTML = '<option value="">-- No Filter --</option>';
+        columns.forEach(col => {
+            const option = document.createElement('option');
+            option.value = col;
+            option.textContent = col;
+            columnSelect.appendChild(option);
+        });
+    });
+
+    tableSelect.dispatchEvent(new Event('change'));
+
+    async function fetchTableData(tableName, columnName="", value="") {
         try {
-            const response = await fetch(`http://localhost:3001/api/get/table_data?tableName=${encodeURIComponent(tableName)}&id=${encodeURIComponent(id)}`);
+            let url = `http://localhost:3001/api/get/table_data?tableName=${encodeURIComponent(tableName)}`;
+            if(columnName) url += `&columnName=${encodeURIComponent(columnName)}`;
+            if(value) url += `&value=${encodeURIComponent(value)}`;
+
+            const response = await fetch(url);
             const data = await response.json();
 
             if (!data.ok) {
@@ -68,7 +104,7 @@
             const rows = data.rows || [];
 
             if (rows.length === 0) {
-                resultDiv.innerHTML = `<p class="text-gray-700 text-center font-semibold">Veri bulunamadı</p>`;
+                resultDiv.innerHTML = `<p class="text-gray-700 text-center font-semibold">No data found</p>`;
                 return;
             }
 
@@ -86,26 +122,28 @@
             resultDiv.innerHTML = html;
 
         } catch (err) {
-            resultDiv.innerHTML = `<p class="text-red-500">Error fetching table info</p>`;
+            resultDiv.innerHTML = `<p class="text-red-500">Error fetching table data</p>`;
             console.error(err);
         }
     }
 
     form.addEventListener('submit', (e) => {
         e.preventDefault();
-        const tableName = document.getElementById('tableSelect').value;
-        const id = document.getElementById('rowId').value.trim();
-        fetchTableData(tableName, id);
+        const tableName = tableSelect.value;
+        const columnName = columnSelect.value;
+        const value = document.getElementById('rowValue').value.trim();
+        fetchTableData(tableName, columnName, value);
+    });
+
+    showAllBtn.addEventListener('click', () => {
+        const tableName = tableSelect.value;
+        fetchTableData(tableName);
     });
 
     resetBtn.addEventListener('click', () => {
-        document.getElementById('rowId').value = "";
+        document.getElementById('rowValue').value = "";
+        columnSelect.value = "";
         resultDiv.innerHTML = "";
-    });
-
-    listAllBtn.addEventListener('click', () => {
-        const tableName = document.getElementById('tableSelect').value;
-        fetchTableData(tableName);
     });
 </script>
 </body>
