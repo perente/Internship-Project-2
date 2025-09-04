@@ -42,7 +42,6 @@
             <div class="mb-4 relative">
                 <input type="text" id="rowValue" name="value"
                        class="w-full border border-gray-300 rounded px-3 py-2" placeholder="Enter value for column (optional)">
-                <!-- Suggestions dropdown -->
                 <div id="suggestionBox" class="absolute w-full bg-white border rounded shadow mt-1 z-50 hidden"></div>
             </div>
 
@@ -76,7 +75,6 @@
 
     const tablesData = <%- JSON.stringify(tables) %>;
 
-    // Update column select when table changes
     tableSelect.addEventListener('change', () => {
         const tableName = tableSelect.value;
         const columns = tablesData[tableName] || [];
@@ -91,7 +89,6 @@
 
     tableSelect.dispatchEvent(new Event('change'));
 
-    // Fetch table data
     async function fetchTableData(tableName, columnName="", value="") {
         try {
             let url = `http://localhost:3001/api/get/table_data?tableName=${encodeURIComponent(tableName)}`;
@@ -133,7 +130,6 @@
         }
     }
 
-    // Form submit
     form.addEventListener('submit', (e) => {
         e.preventDefault();
         const tableName = tableSelect.value;
@@ -142,13 +138,11 @@
         fetchTableData(tableName, columnName, value);
     });
 
-    // Show all
     showAllBtn.addEventListener('click', () => {
         const tableName = tableSelect.value;
         fetchTableData(tableName);
     });
 
-    // Reset
     resetBtn.addEventListener('click', () => {
         rowValueInput.value = "";
         columnSelect.value = "";
@@ -157,7 +151,6 @@
         resultDiv.innerHTML = "";
     });
 
-    // Autocomplete
     let debounceTimer;
     rowValueInput.addEventListener('input', () => {
         const tableName = tableSelect.value;
@@ -199,7 +192,6 @@
         }, 300);
     });
 
-    // Hide suggestions if click outside
     document.addEventListener('click', (e) => {
         if(!rowValueInput.contains(e.target) && !suggestionBox.contains(e.target)) {
             suggestionBox.innerHTML = "";
