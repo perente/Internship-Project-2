@@ -39,14 +39,26 @@
                 </select>
             </div>
 
-            <div class="mb-4 relative">
-                <input type="text" id="rowValue" name="value"
-                       class="w-full border border-gray-300 rounded px-3 py-2" placeholder="Enter value for column (optional)">
-                <div id="suggestionBox" class="absolute w-full bg-white border rounded shadow mt-1 z-50 hidden"></div>
+            <div class="mb-4">
+                <label for="rowId" class="block font-semibold mb-1">
+                    Enter ID (Leave blank to list all data):
+                </label>
+                <input type="text" id="rowId" name="id"
+                       class="w-full border border-gray-300 rounded px-3 py-2">
             </div>
 
-            <div class="flex space-x-2">
-                <button type="submit"
+            <div class="flex flex-wrap gap-2">
+                <button type="button" id="listAllBtn"
+                        class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">
+                    List All
+                </button>
+
+                <button type="button" id="toggleFilterBtn"
+                        class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 transition">
+                    Filter by ID
+                </button>
+
+                <button type="submit" id="submitBtn"
                         class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">
                     Show Data
                 </button>
@@ -67,88 +79,58 @@
     const form = document.getElementById('tableForm');
     const resultDiv = document.getElementById('result');
     const resetBtn = document.getElementById('resetBtn');
-    const tableSelect = document.getElementById('tableSelect');
-    const columnSelect = document.getElementById('columnSelect');
-    const showAllBtn = document.getElementById('showAllBtn');
-    const rowValueInput = document.getElementById('rowValue');
-    const suggestionBox = document.getElementById('suggestionBox');
+    const listAllBtn = document.getElementById('listAllBtn');
 
-    const tablesData = <%- JSON.stringify(tables) %>;
-
-    tableSelect.addEventListener('change', () => {
-        const tableName = tableSelect.value;
-        const columns = tablesData[tableName] || [];
-        columnSelect.innerHTML = '<option value="">-- No Filter --</option>';
-        columns.forEach(col => {
-            const option = document.createElement('option');
-            option.value = col;
-            option.textContent = col;
-            columnSelect.appendChild(option);
-        });
-    });
-
-    tableSelect.dispatchEvent(new Event('change'));
-
-    async function fetchTableData(tableName, columnName="", value="") {
+    async function fetchTableData(tableName, id="") {
         try {
-            let url = `http://localhost:3001/api/get/table_data?tableName=${encodeURIComponent(tableName)}`;
-            if(columnName) url += `&columnName=${encodeURIComponent(columnName)}`;
-            if(value) url += `&value=${encodeURIComponent(value)}`;
-
-            const response = await fetch(url);
+            const response = await fetch(`http://localhost:3001/api/get/table_data?tableName=${encodeURIComponent(tableName)}&id=${encodeURIComponent(id)}`);
             const data = await response.json();
 
-            if (!data.ok) {
-                resultDiv.innerHTML = `<p class="text-red-500">${data.error}</p>`;
-                return;
-            }
+      if (!data.ok) {
+        resultDiv.innerHTML = `<p class="text-red-500">${data.error || "Unknown API error"}</p>`;
+        return;
+      }
 
-            const columns = data.columns || [];
-            const rows = data.rows || [];
+      const columns = data.columns || [];
+      const rows = data.rows || [];
 
             if (rows.length === 0) {
-                resultDiv.innerHTML = `<p class="text-gray-700 text-center font-semibold">No data found</p>`;
+                resultDiv.innerHTML = `<p class="text-gray-700 text-center font-semibold">Veri bulunamadı</p>`;
                 return;
             }
 
-            let html = `<table class="min-w-full border border-gray-300 text-left table-auto"><thead class="bg-gray-200"><tr>`;
-            columns.forEach(col => { html += `<th class="px-4 py-2 border">${col}</th>`; });
-            html += `</tr></thead><tbody>`;
-
-            rows.forEach(row => {
-                html += "<tr>";
-                row.forEach(cell => { html += `<td class="px-4 py-2 border">${cell}</td>`; });
-                html += "</tr>";
-            });
-
-            html += "</tbody></table>";
-            resultDiv.innerHTML = html;
+      let html = `<table class="min-w-full border border-gray-300 text-left table-auto"><thead class="bg-gray-200"><tr>`;
+      columns.forEach(col => { html += `<th class="px-4 py-2 border">${col}</th>`; });
+      html += `</tr></thead><tbody>`;
+      rows.forEach(row => {
+        html += "<tr>";
+        row.forEach(cell => { html += `<td class="px-4 py-2 border">${cell}</td>`; });
+        html += "</tr>";
+      });
+      html += "</tbody></table>";
+      resultDiv.innerHTML = html;
 
         } catch (err) {
-            resultDiv.innerHTML = `<p class="text-red-500">Error fetching table data</p>`;
+            resultDiv.innerHTML = `<p class="text-red-500">Error fetching table info</p>`;
             console.error(err);
         }
     }
 
     form.addEventListener('submit', (e) => {
         e.preventDefault();
-        const tableName = tableSelect.value;
-        const columnName = columnSelect.value;
-        const value = rowValueInput.value.trim();
-        fetchTableData(tableName, columnName, value);
-    });
-
-    showAllBtn.addEventListener('click', () => {
-        const tableName = tableSelect.value;
-        fetchTableData(tableName);
+        const tableName = document.getElementById('tableSelect').value;
+        const id = document.getElementById('rowId').value.trim();
+        fetchTableData(tableName, id);
     });
 
     resetBtn.addEventListener('click', () => {
-        rowValueInput.value = "";
-        columnSelect.value = "";
-        suggestionBox.innerHTML = "";
-        suggestionBox.style.display = "none";
+        document.getElementById('rowId').value = "";
         resultDiv.innerHTML = "";
+        if (!idSection.classList.contains('hidden')) {
+            idSection.classList.add('hidden');
+            submitBtn.classList.add('hidden');
+            toggleFilterBtn.textContent = "Filter by ID";
+        }
     });
 
     let debounceTimer;
@@ -196,6 +178,18 @@
         if(!rowValueInput.contains(e.target) && !suggestionBox.contains(e.target)) {
             suggestionBox.innerHTML = "";
             suggestionBox.style.display = "none";
+        }
+    });
+
+    toggleFilterBtn.addEventListener('click', () => {
+        const open = idSection.classList.toggle('hidden') === false; // açık mı?
+        submitBtn.classList.toggle('hidden', !open);
+        if (open) {
+            rowIdInput.focus();
+            toggleFilterBtn.textContent = "Hide ID Filter";
+        } else {
+            rowIdInput.value = "";
+            toggleFilterBtn.textContent = "Filter by ID";
         }
     });
 </script>

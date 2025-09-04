@@ -1,4 +1,4 @@
-import oracledb from "oracledb";
+import oracledb, { BindParameters } from "oracledb";
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
