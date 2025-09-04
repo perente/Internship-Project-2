@@ -1,17 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
-<%- include('layouts/head', {title: "Dashboard"}) %>
-<body class="flex h-screen bg-gray-100">
+  <%- include('layouts/head', {title: "Dashboard"}) %>
+  <body class="flex h-screen bg-gray-100">
+    <%- include("layouts/sidebar") %>
 
-<%- include("layouts/sidebar") %>
+    <div class="flex flex-col flex-1">
+      <%- include("layouts/header") %>
 
-<div class="flex flex-col flex-1">
+      <main class="p-6 overflow-auto">
+        <section class="bg-white p-4 rounded shadow relative z-10">
+          <h2 class="text-xl font-semibold mb-4">Daily Requests by Table</h2>
 
-    <%- include("layouts/header") %>
+          <div class="flex gap-2 mb-4">
+            <label>From: <input type="date" id="fromDate" /></label>
+            <label>To: <input type="date" id="toDate" /></label>
+            <button
+              type="button"
+              id="applyRange"
+              class="bg-blue-500 text-white px-3 py-1 rounded"
+            >
+              Apply
+            </button>
+          </div>
 
-    <main class="p-6 overflow-auto">
+          <canvas id="dailyChart" height="120"></canvas>
+        </section>
+      </main>
+    </div>
 
-    </main>
-</div>
-</body>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script defer src="/js/dashboard-charts.js"></script>
+  </body>
 </html>

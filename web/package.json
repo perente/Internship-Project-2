@@ -13,11 +13,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "chart.js": "^4.5.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
-    "oracledb": "^6.9.0"
+    "oracledb": "^6.9.0",
+    "react-chartjs-2": "^5.3.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
