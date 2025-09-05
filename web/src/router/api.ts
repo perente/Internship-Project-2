@@ -149,6 +149,8 @@ export function createApiServer() {
         const r = await conn.execute(sql, { fromDate, toDate });
         res.json({ ok: true, rows: r.rows }); 
         await conn.close();
+      } catch (e: any) {
+        res.status(500).json({ ok: false, error: e.message });
       }
     } catch (e: any) {
       res.status(500).json({ ok: false, error: e.message });
