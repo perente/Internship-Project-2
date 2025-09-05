@@ -8,8 +8,8 @@
       <%- include("layouts/header") %>
 
       <main class="p-6 overflow-auto">
-        <section class="bg-white p-4 rounded shadow relative z-10">
-          <h2 class="text-xl font-semibold mb-4">Daily Requests by Table</h2>
+        <section class="bg-white p-4 rounded shadow">
+          <h2 class="text-xl font-semibold mb-4">Requests by Table</h2>
 
           <div class="flex gap-2 mb-4">
             <label>From: <input type="date" id="fromDate" /></label>
@@ -23,7 +23,11 @@
             </button>
           </div>
 
-          <canvas id="dailyChart" height="120"></canvas>
+          <div class="w-full overflow-x-auto">
+            <div id="barWrap" class="h-[260px] w-full">
+              <canvas id="totalsBar"></canvas>
+            </div>
+          </div>
         </section>
       </main>
     </div>

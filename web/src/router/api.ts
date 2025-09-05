@@ -130,27 +130,24 @@ export function createApiServer() {
     }
   });
 
-  getRouter.get("/logs/daily-raw", async (req, res) => {
-    const from = (req.query.from as string) || null; 
-    const to = (req.query.to as string) || null;
+  getRouter.get("/logs/totals", async (req, res) => {
+    const fromDate = (req.query.from as string) || null;
+    const toDate = (req.query.to as string) || null;
 
     try {
       const conn = await getConn();
       try {
         const sql = `
-        SELECT
-          TARGET_TABLE,
-          TRUNC(CREATED_AT) AS DAY,
-          COUNT(*)          AS REQ_COUNT
+        SELECT TARGET_TABLE,
+               COUNT(*) AS REQ_COUNT
         FROM API_REQUEST_LOG
-        WHERE (:from IS NULL OR TRUNC(CREATED_AT) >= TO_DATE(:from, 'YYYY-MM-DD'))
-          AND (:to   IS NULL OR TRUNC(CREATED_AT) <= TO_DATE(:to,   'YYYY-MM-DD'))
-        GROUP BY TARGET_TABLE, TRUNC(CREATED_AT)
-        ORDER BY DAY ASC, TARGET_TABLE ASC
+        WHERE (:fromDate IS NULL OR CREATED_AT >= TO_TIMESTAMP(:fromDate,'YYYY-MM-DD'))
+          AND (:toDate   IS NULL OR CREATED_AT <  TO_TIMESTAMP(:toDate,  'YYYY-MM-DD') + INTERVAL '1' DAY)
+        GROUP BY TARGET_TABLE
+        ORDER BY REQ_COUNT DESC, TARGET_TABLE ASC
       `;
-        const r = await conn.execute(sql, { from, to });
-        res.json({ ok: true, rows: r.rows });
-      } finally {
+        const r = await conn.execute(sql, { fromDate, toDate });
+        res.json({ ok: true, rows: r.rows }); 
         await conn.close();
       }
     } catch (e: any) {

@@ -1,80 +1,172 @@
-(function () {
-  const apiBase = "http://localhost:3001";
-  const fromEl = document.getElementById("fromDate");
-  const toEl   = document.getElementById("toDate");
-  const btn    = document.getElementById("applyRange");
-  const canvas = document.getElementById("dailyChart");
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
+const BAR_THICKNESS_PX = 25;
+const PALETTE_HEX = [
+  "#0B132B",
+  "#1E293B",
+  "#1D4ED8",
+  "#0F766E",
+  "#14532D",
+  "#3F6212",
+  "#2F855A",
+  "#1F6F8B",
+  "#2A4365",
+  "#22303C",
+  "#334155",
+  "#4B5563",
+  "#374151",
+  "#7C2D12",
+  "#5B2C1E",
+  "#2F3E46",
+];
 
-  let chart;
+function $(id) {
+  return document.getElementById(id);
+}
 
-  function toYMD(v) {
-    if (!v) return null;
-    if (v instanceof Date) {
-      const y = v.getFullYear();
-      const m = String(v.getMonth() + 1).padStart(2, "0");
-      const d = String(v.getDate()).padStart(2, "0");
-      return `${y}-${m}-${d}`;
-    }
-    return String(v).slice(0, 10);
+function hexToRgba(hex, a) {
+  const n = parseInt(hex.replace("#", ""), 16);
+  const r = (n >> 16) & 255,
+    g = (n >> 8) & 255,
+    b = n & 255;
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function assignColors(labels) {
+  const uniq = [...new Set(labels)].sort();
+  const m = PALETTE_HEX.length;
+
+  const stride = Math.floor(m / 2) + 1;
+  const order = [];
+  let idx = 0;
+  for (let i = 0; i < m; i++) {
+    order.push(idx);
+    idx = (idx + stride) % m;
   }
 
-  async function fetchDaily(from, to) {
+  const map = new Map();
+  for (let i = 0; i < uniq.length; i++) {
+    const base = PALETTE_HEX[order[i % m]];
+    const wrap = Math.floor(i / m);
+    const stroke = base;
+    const fill = hexToRgba(base, wrap === 0 ? 0.6 : wrap === 1 ? 0.45 : 0.35);
+    map.set(uniq[i], { stroke, fill });
+  }
+
+  return {
+    strokes: labels.map((l) => map.get(l).stroke),
+    fills: labels.map((l) => map.get(l).fill),
+  };
+}
+
+(async function () {
+  const apiBase = "http://localhost:3001";
+  let barChart;
+
+  async function fetchTotals(from, to) {
     const p = new URLSearchParams();
     if (from) p.set("from", from);
-    if (to)   p.set("to", to);
-    const res = await fetch(`${apiBase}/api/get/logs/daily-raw?${p.toString()}`);
+    if (to) p.set("to", to);
+    const res = await fetch(`${apiBase}/api/get/logs/totals?${p.toString()}`);
     const data = await res.json();
-    if (!data.ok) throw new Error(data.error || "fetch failed");
-    return (data.rows || []).map(r => [r[0], toYMD(r[1]), Number(r[2])]); // [table, day, count]
+    if (!data.ok) throw new Error(data.error || "fetch totals failed");
+    return (data.rows || []).map((r) => [String(r[0]), Number(r[1])]);
   }
 
-  function pivot(rows) {
-    const daySet = new Set(), tableSet = new Set();
-    const map = new Map(); // table -> (day -> count)
-    rows.forEach(([t, d, c]) => {
-      tableSet.add(t); daySet.add(d);
-      if (!map.has(t)) map.set(t, new Map());
-      map.get(t).set(d, c);
-    });
-    const labels = Array.from(daySet).sort();
-    const datasets = Array.from(tableSet).sort().map(t => ({
-      label: t,
-      data: labels.map(d => map.get(t).get(d) ?? 0),
-      tension: 0.25,
-      fill: false
-    }));
-    return { labels, datasets };
+  function buildConfig(labels, data) {
+    const { fills, strokes } = assignColors(labels);
+
+    return {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Requests",
+            data,
+            backgroundColor: fills,
+            borderColor: strokes,
+            borderWidth: 2,
+            borderRadius: 4,
+            barThickness: BAR_THICKNESS_PX,
+            maxBarThickness: BAR_THICKNESS_PX,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            mode: "index",
+            intersect: false,
+            callbacks: { label: (ctx) => String(ctx.parsed.y) },
+          },
+        },
+        scales: {
+          x: {
+            title: { display: true, text: "Table" },
+            grid: { display: false },
+            ticks: { autoSkip: false, maxRotation: 0, minRotation: 0 },
+          },
+          y: {
+            title: { display: true, text: "Requests" },
+            beginAtZero: true,
+            ticks: { precision: 0, stepSize: 1 },
+          },
+        },
+        layout: { padding: { top: 6, right: 8, bottom: 6, left: 8 } },
+      },
+    };
   }
 
   async function draw() {
     try {
-      const from = fromEl?.value || null;
-      const to   = toEl?.value   || null;
-      const rows = await fetchDaily(from, to);
-      const { labels, datasets } = pivot(rows);
-      const cfg = {
-        type: "line",
-        data: { labels, datasets },
-        options: {
-          responsive: true,
-          plugins: { legend: { position: "bottom" }, tooltip: { mode: "index", intersect: false } },
-          interaction: { mode: "nearest", intersect: false },
-          scales: {
-            x: { title: { display: true, text: "Day" } },
-            y: { title: { display: true, text: "Request Count" }, beginAtZero: true, ticks: { precision: 0 } }
-          }
-        }
-      };
-      if (chart) chart.destroy();
-      chart = new Chart(ctx, cfg);
+      const from = $("fromDate")?.value || null;
+      const to = $("toDate")?.value || null;
+
+      const rows = await fetchTotals(from, to);
+      const labels = rows.map((r) => r[0]);
+      const data = rows.map((r) => r[1]);
+
+      const wrap = $("barWrap");
+      const canvas = $("totalsBar");
+      if (!wrap || !canvas) return;
+
+      const PER_BAR_SPACE = BAR_THICKNESS_PX + 24;
+      const minWidth = Math.max(
+        labels.length * PER_BAR_SPACE,
+        wrap.parentElement.clientWidth
+      );
+      wrap.style.width = minWidth + "px";
+
+      const ctx = canvas.getContext("2d");
+      if (!barChart) {
+        barChart = new Chart(ctx, buildConfig(labels, data));
+      } else {
+        const { fills, strokes } = assignColors(labels);
+        barChart.data.labels = labels;
+        barChart.data.datasets[0].data = data;
+        barChart.data.datasets[0].backgroundColor = fills;
+        barChart.data.datasets[0].borderColor = strokes;
+        barChart.update();
+      }
     } catch (e) {
-      console.error(e);
+      console.error("[bar] draw error:", e);
     }
   }
 
-  btn?.addEventListener("click", draw);
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", draw);
-  else draw();
+  function bind() {
+    $("applyRange")?.addEventListener("click", (e) => {
+      e.preventDefault();
+      draw();
+    });
+
+    draw();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bind);
+  } else {
+    bind();
+  }
 })();
