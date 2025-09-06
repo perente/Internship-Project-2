@@ -60,6 +60,7 @@ function assignColors(labels) {
 (async function () {
   const apiBase = "http://localhost:3001";
   let barChart;
+  let colChart;
 
   async function fetchTotals(from, to) {
     const p = new URLSearchParams();
@@ -155,10 +156,57 @@ function assignColors(labels) {
     }
   }
 
+  async function fetchByColumn(table) {
+    const res = await fetch(
+      `${apiBase}/api/get/logs/by-column?tableName=${encodeURIComponent(table)}`
+    );
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "fetch by column failed");
+    return (data.rows || []).map((r) => [String(r[0]), Number(r[1])]);
+  }
+
+  async function drawColumns(table) {
+    try {
+      const rows = await fetchByColumn(table);
+      const labels = rows.map((r) => r[0]);
+      const data = rows.map((r) => r[1]);
+
+      const wrap = $("colBarWrap");
+      const canvas = $("columnsBar");
+      if (!wrap || !canvas) return;
+
+      const PER_BAR_SPACE = BAR_THICKNESS_PX + 24;
+      const minWidth = Math.max(
+        labels.length * PER_BAR_SPACE,
+        wrap.parentElement.clientWidth
+      );
+      wrap.style.width = minWidth + "px";
+
+      const ctx = canvas.getContext("2d");
+      if (!colChart) {
+        colChart = new Chart(ctx, buildConfig(labels, data));
+      } else {
+        const { fills, strokes } = assignColors(labels);
+        colChart.data.labels = labels;
+        colChart.data.datasets[0].data = data;
+        colChart.data.datasets[0].backgroundColor = fills;
+        colChart.data.datasets[0].borderColor = strokes;
+        colChart.update();
+      }
+    } catch (e) {
+      console.error("[col] draw error:", e);
+    }
+  }
+
   function bind() {
     $("applyRange")?.addEventListener("click", (e) => {
       e.preventDefault();
       draw();
+    });
+
+    $("colTableSelect")?.addEventListener("change", (e) => {
+      const table = e.target.value;
+      if (table) drawColumns(table);
     });
 
     draw();

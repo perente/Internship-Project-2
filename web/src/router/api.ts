@@ -147,11 +147,44 @@ export function createApiServer() {
         ORDER BY REQ_COUNT DESC, TARGET_TABLE ASC
       `;
         const r = await conn.execute(sql, { fromDate, toDate });
-        res.json({ ok: true, rows: r.rows }); 
+        res.json({ ok: true, rows: r.rows });
         await conn.close();
       } catch (e: any) {
         res.status(500).json({ ok: false, error: e.message });
       }
+    } catch (e: any) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  getRouter.get("/logs/by-column", async (req, res) => {
+    try {
+      const tableName = ((req.query.tableName as string) || "").trim();
+
+      if (!tableName) {
+        return res.status(400).json({ ok: false, error: "tableName required" });
+      }
+
+      if (!/^[A-Z0-9_]+$/.test(tableName)) {
+        return res.status(400).json({ ok: false, error: "invalid tableName" });
+      }
+
+      const conn = await getConn();
+
+      const sql = `
+      SELECT REGEXP_SUBSTR(request_src, 'columnName=([^&]+)', 1, 1, NULL, 1) AS COLUMN_NAME,
+             COUNT(*) AS REQ_COUNT
+      FROM API_REQUEST_LOG
+      WHERE TARGET_TABLE = :tbl
+        AND request_src LIKE '%columnName=%'      -- sadece sütun özelinde olanlar
+      GROUP BY REGEXP_SUBSTR(request_src, 'columnName=([^&]+)', 1, 1, NULL, 1)
+      ORDER BY REQ_COUNT DESC, COLUMN_NAME ASC
+    `;
+
+      const r = await conn.execute(sql, { tbl: tableName });
+      await conn.close();
+
+      res.json({ ok: true, rows: r.rows ?? [] });
     } catch (e: any) {
       res.status(500).json({ ok: false, error: e.message });
     }
