@@ -1,4 +1,5 @@
 const BAR_THICKNESS_PX = 25;
+const DEFAULT_TABLE = "T_BASE_OFFER";
 const PALETTE_HEX = [
   "#0B132B",
   "#1E293B",
@@ -208,6 +209,19 @@ function assignColors(labels) {
       const table = e.target.value;
       if (table) drawColumns(table);
     });
+
+    const sel = $("colTableSelect");
+    if (sel) {
+      const hasDefault = Array.from(sel.options).some(
+        (o) => o.value === DEFAULT_TABLE
+      );
+      if (!sel.value && hasDefault) {
+        sel.value = DEFAULT_TABLE;
+      }
+      if (sel.value) {
+        drawColumns(sel.value);
+      }
+    }
 
     draw();
   }

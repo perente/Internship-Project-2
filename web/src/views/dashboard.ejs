@@ -33,11 +33,12 @@
           <h2 class="text-xl font-semibold mb-4">Requests by Column</h2>
 
           <div class="flex gap-2 mb-4">
-            <label for="colTableSelect">Table:</label>
-            <select id="colTableSelect" class="border rounded px-2 py-1">
-              <option value="">-- Select Table --</option>
+            <label for="colTableSelect">Select Table:</label>
+           <select id="colTableSelect" class="border rounded px-2 py-1">
               <% Object.keys(tables || {}).forEach(function(tableName){ %>
-              <option value="<%= tableName %>"><%= tableName %></option>
+                <option value="<%= tableName %>" <%= tableName === "T_BASE_OFFER" ? "selected" : "" %>>
+                  <%= tableName %>
+                </option>
               <% }); %>
             </select>
           </div>
