@@ -1,0 +1,67 @@
+-- V12__fk_on_delete_cascade.sql
+
+------------------------------------------------------------------------------
+-- 1) T_CONTRACT_DETAIL → T_CONTRACT (FK_TCD_CONTRACT)
+------------------------------------------------------------------------------
+DECLARE
+  v_cnt NUMBER;
+BEGIN
+  SELECT COUNT(*) INTO v_cnt
+  FROM USER_CONSTRAINTS
+  WHERE CONSTRAINT_NAME = 'FK_TCD_CONTRACT';
+
+  IF v_cnt > 0 THEN
+    EXECUTE IMMEDIATE 'ALTER TABLE T_CONTRACT_DETAIL DROP CONSTRAINT FK_TCD_CONTRACT';
+  END IF;
+END;
+/
+ALTER TABLE T_CONTRACT_DETAIL
+  ADD CONSTRAINT FK_TCD_CONTRACT
+  FOREIGN KEY (CONTRACT_ID)
+  REFERENCES T_CONTRACT(ID)
+  ENABLE NOVALIDATE;
+/
+
+------------------------------------------------------------------------------
+-- 2) T_CONTRACT_DETAIL → T_BASE_OFFER (FK_TCD_BASE_OFFER)
+------------------------------------------------------------------------------
+DECLARE
+  v_cnt NUMBER;
+BEGIN
+  SELECT COUNT(*) INTO v_cnt
+  FROM USER_CONSTRAINTS
+  WHERE CONSTRAINT_NAME = 'FK_TCD_BASE_OFFER';
+
+  IF v_cnt > 0 THEN
+    EXECUTE IMMEDIATE 'ALTER TABLE T_CONTRACT_DETAIL DROP CONSTRAINT FK_TCD_BASE_OFFER';
+  END IF;
+END;
+/
+ALTER TABLE T_CONTRACT_DETAIL
+  ADD CONSTRAINT FK_TCD_BASE_OFFER
+  FOREIGN KEY (OFFER_ID)
+  REFERENCES T_BASE_OFFER(ID)
+  ENABLE NOVALIDATE;
+/
+
+------------------------------------------------------------------------------
+-- 3) T_CONTRACT_DETAIL_DISCOUNT → T_CONTRACT_DETAIL_PRICE (FK_TCDD_PRICE)
+------------------------------------------------------------------------------
+DECLARE
+  v_cnt NUMBER;
+BEGIN
+  SELECT COUNT(*) INTO v_cnt
+  FROM USER_CONSTRAINTS
+  WHERE CONSTRAINT_NAME = 'FK_TCDD_PRICE';
+
+  IF v_cnt > 0 THEN
+    EXECUTE IMMEDIATE 'ALTER TABLE T_CONTRACT_DETAIL_DISCOUNT DROP CONSTRAINT FK_TCDD_PRICE';
+  END IF;
+END;
+/
+ALTER TABLE T_CONTRACT_DETAIL_DISCOUNT
+  ADD CONSTRAINT FK_TCDD_PRICE
+  FOREIGN KEY (CONTRACT_DETAIL_PRICE_ID)
+  REFERENCES T_CONTRACT_DETAIL_PRICE(ID)
+  ENABLE NOVALIDATE;
+/

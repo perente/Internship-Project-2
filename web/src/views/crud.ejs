@@ -1,368 +1,664 @@
 <!DOCTYPE html>
 <html lang="en">
-<%- include('layouts/head', {title: "Data Manager"}) %>
-<body class="flex h-screen bg-gray-100">
+  <%- include('layouts/head', { title: "Data Manager" }) %>
+  <body class="flex h-screen bg-gray-100">
+    <%- include("layouts/sidebar") %>
 
-<%- include("layouts/sidebar") %>
+    <div class="flex flex-col flex-1">
+      <%- include("layouts/header") %>
 
-<div class="flex flex-col flex-1">
-
-    <%- include("layouts/header") %>
-
-    <main class="p-6 overflow-auto">
-
-        <form id="searchForm" class="bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto mb-6 relative">
-            <div class="mb-4 flex items-start space-x-2">
-                <div class="flex-1">
-                    <label for="tableSelect" class="block font-semibold mb-1">Select table:</label>
-                    <select id="tableSelect" name="tableName" required
-                            class="w-full border border-gray-300 rounded px-3 py-2">
-                        <% Object.keys(tables).forEach(function(tableName){ %>
-                            <option value="<%= tableName %>"><%= tableName %></option>
-                        <% }); %>
-                    </select>
-                </div>
-                <button type="button" id="showAllBtn" title="List All Data"
-                        class="mt-7 text-gray-600 hover:text-gray-900 p-2 border rounded" style="padding: 0.4rem;">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                    </svg>
-                </button>
+      <main class="p-6 overflow-auto">
+        <!-- Search / Filter / Insert -->
+        <form
+          id="searchForm"
+          class="bg-white p-6 rounded-lg shadow-md max-w-5xl mx-auto mb-6 relative"
+        >
+          <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+            <!-- Table select -->
+            <div>
+              <label for="tableSelect" class="block font-semibold mb-1">
+                Select table:
+              </label>
+              <select
+                id="tableSelect"
+                name="tableName"
+                required
+                class="w-full border border-gray-300 rounded px-3 py-2"
+              >
+                <% Object.keys(tables).forEach(function(tableName){ %>
+                  <option value="<%= tableName %>"><%= tableName %></option>
+                <% }); %>
+              </select>
             </div>
 
-            <div class="mb-2">
-                <label for="columnSelect" class="block font-semibold mb-1">Filter by column & value (optional):</label>
-                <select id="columnSelect" name="columnName"
-                        class="w-full border border-gray-300 rounded px-3 py-2">
-                    <option value="">-- No Filter --</option>
-                </select>
+            <!-- Column select -->
+            <div>
+              <label for="columnSelect" class="block font-semibold mb-1">
+                Filter by column:
+              </label>
+              <select
+                id="columnSelect"
+                name="columnName"
+                class="w-full border border-gray-300 rounded px-3 py-2"
+              >
+                <option value="">-- No Filter --</option>
+              </select>
             </div>
 
-            <div class="mb-4 relative">
-                <input type="text" id="rowValue" name="value"
-                       class="w-full border border-gray-300 rounded px-3 py-2" placeholder="Enter value for column (optional)" autocomplete="off">
-                <div id="suggestionBox" class="absolute w-full bg-white border rounded shadow mt-1 z-50 hidden"></div>
+            <!-- Value + suggestions -->
+            <div class="relative">
+              <label for="rowValue" class="block font-semibold mb-1">
+                Filter value:
+              </label>
+              <input
+                type="text"
+                id="rowValue"
+                name="value"
+                class="w-full border border-gray-300 rounded px-3 py-2"
+                placeholder="Enter value (optional)"
+                autocomplete="off"
+              />
+              <div
+                id="suggestionBox"
+                class="absolute left-0 right-0 bg-white border rounded shadow mt-1 z-50 hidden max-h-56 overflow-auto"
+                role="listbox"
+                aria-label="Suggestions"
+              ></div>
             </div>
+          </div>
 
-            <div class="flex space-x-2">
-                <button type="submit"
-                        class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">
-                    Show Data
-                </button>
+          <!-- Actions row -->
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="submit"
+              class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
+            >
+              Show Data
+            </button>
 
-                <button type="button" id="resetBtn"
-                        class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">
-                    Reset
-                </button>
+            <button
+              type="button"
+              id="showAllBtn"
+              title="List All Data"
+              class="text-gray-700 hover:text-gray-900 px-3 py-2 border rounded"
+            >
+              Show All
+            </button>
+
+            <button
+              type="button"
+              id="resetBtn"
+              class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition"
+            >
+              Reset
+            </button>
+
+            <div class="ml-auto">
+              <button
+                id="insertBtn"
+                type="button"
+                class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+              >
+                Add Row
+              </button>
             </div>
+          </div>
         </form>
 
+        <!-- Data table result -->
         <div id="result" class="max-w-6xl mx-auto overflow-auto"></div>
 
-        <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center hidden z-50">
-            <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
-                <h2 class="text-lg font-semibold mb-4">Are you sure to delete this row?</h2>
-                <div class="flex justify-end space-x-2">
-                    <button id="deleteCancelBtn" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancel</button>
-                    <button id="deleteConfirmBtn" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Yes, delete</button>
-                </div>
+        <!-- Delete Modal -->
+        <div
+          id="deleteModal"
+          class="fixed inset-0 bg-black/40 flex items-center justify-center hidden z-50"
+          aria-hidden="true"
+        >
+          <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
+            <h2 class="text-lg font-semibold mb-4">
+              Are you sure to delete this row?
+            </h2>
+            <div class="flex justify-end space-x-2">
+              <button
+                id="deleteCancelBtn"
+                class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                id="deleteConfirmBtn"
+                class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+              >
+                Yes, delete
+              </button>
             </div>
+          </div>
         </div>
 
-        <div id="editModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center hidden z-50">
-            <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-lg max-h-[90vh] overflow-y-auto">
-                <h2 class="text-lg font-semibold mb-4">Edit Row</h2>
-                <form id="editForm" class="space-y-3"></form>
-                <div class="flex justify-end space-x-2 mt-4">
-                    <button id="editCancelBtn" type="button" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Cancel</button>
-                    <button id="editSaveBtn" type="submit" form="editForm" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Save</button>
-                </div>
+        <!-- Insert Modal -->
+        <div
+          id="insertModal"
+          class="fixed inset-0 bg-black/40 flex items-center justify-center hidden z-50"
+          aria-hidden="true"
+        >
+          <div
+            class="bg-white p-6 rounded-lg shadow-md w-full max-w-lg max-h-[90vh] overflow-y-auto"
+          >
+            <h2 class="text-lg font-semibold mb-4">Insert Row</h2>
+            <form id="insertForm" class="space-y-3"></form>
+            <div class="flex justify-end space-x-2 mt-4">
+              <button
+                id="insertCancelBtn"
+                type="button"
+                class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                id="insertSaveBtn"
+                type="submit"
+                form="insertForm"
+                class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              >
+                Insert
+              </button>
             </div>
+          </div>
         </div>
 
-    </main>
-</div>
+        <!-- Edit Modal -->
+        <div
+          id="editModal"
+          class="fixed inset-0 bg-black/40 flex items-center justify-center hidden z-50"
+          aria-hidden="true"
+        >
+          <div
+            class="bg-white p-6 rounded-lg shadow-md w-full max-w-lg max-h-[90vh] overflow-y-auto"
+          >
+            <h2 class="text-lg font-semibold mb-4">Edit Row</h2>
+            <form id="editForm" class="space-y-3"></form>
+            <div class="flex justify-end space-x-2 mt-4">
+              <button
+                id="editCancelBtn"
+                type="button"
+                class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                id="editSaveBtn"
+                type="submit"
+                form="editForm"
+                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
 
-<script>
-    const form = document.getElementById('searchForm');
-    const tableSelect = document.getElementById('tableSelect');
-    const columnSelect = document.getElementById('columnSelect');
-    const rowValueInput = document.getElementById('rowValue');
-    const suggestionBox = document.getElementById('suggestionBox');
-    const resultDiv = document.getElementById('result');
-    const resetBtn = document.getElementById('resetBtn');
-    const showAllBtn = document.getElementById('showAllBtn');
+    <script>
+      /* --- Elements --- */
+      const form = document.getElementById('searchForm');
+      const tableSelect = document.getElementById('tableSelect');
+      const columnSelect = document.getElementById('columnSelect');
+      const rowValueInput = document.getElementById('rowValue');
+      const suggestionBox = document.getElementById('suggestionBox');
+      const resultDiv = document.getElementById('result');
+      const resetBtn = document.getElementById('resetBtn');
+      const showAllBtn = document.getElementById('showAllBtn');
 
-    const deleteModal = document.getElementById('deleteModal');
-    const deleteConfirmBtn = document.getElementById('deleteConfirmBtn');
-    const deleteCancelBtn = document.getElementById('deleteCancelBtn');
+      const insertBtn = document.getElementById('insertBtn');
+      const insertModal = document.getElementById('insertModal');
+      const insertForm = document.getElementById('insertForm');
+      const insertCancelBtn = document.getElementById('insertCancelBtn');
+      const insertSaveBtn = document.getElementById('insertSaveBtn');
 
-    const editModal = document.getElementById('editModal');
-    const editForm = document.getElementById('editForm');
-    const editCancelBtn = document.getElementById('editCancelBtn');
-    const editSaveBtn = document.getElementById('editSaveBtn');
+      const deleteModal = document.getElementById('deleteModal');
+      const deleteConfirmBtn = document.getElementById('deleteConfirmBtn');
+      const deleteCancelBtn = document.getElementById('deleteCancelBtn');
 
-    const tablesData = <%- JSON.stringify(tables) %>;
+      const editModal = document.getElementById('editModal');
+      const editForm = document.getElementById('editForm');
+      const editCancelBtn = document.getElementById('editCancelBtn');
+      const editSaveBtn = document.getElementById('editSaveBtn');
 
-    let currentTable = null;
-    let currentColumns = [];
-    let currentRows = [];
-    let deleteIndex = null;
-    let editIndex = null;
+      const tablesData = <%- JSON.stringify(tables) %>;
 
-    function escapeHtml(str) {
+      /* --- State --- */
+      let pkCols = new Set();
+      let fkCols = new Set();
+
+      let currentTable = null;
+      let currentColumns = [];
+      let currentRows = [];
+      let deleteIndex = null;
+      let editIndex = null;
+      let debounceTimer = null;
+      let suggestionActive = -1;
+
+      /* --- Utils --- */
+      function escapeHtml(str) {
         if (str === null || str === undefined) return '';
         return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#39;");
-    }
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
 
-    async function safeGetJson(url) {
+      async function safeGetJson(url) {
         const res = await fetch(url, { credentials: 'include' });
         const text = await res.text();
         try {
-            return JSON.parse(text);
+          return JSON.parse(text);
         } catch (e) {
-            console.error('Non-JSON response from', url, text);
-            throw new Error('Invalid JSON response from server');
+          console.error('Non-JSON response from', url, text);
+          throw new Error('Invalid JSON response from server');
         }
-    }
+      }
 
-    tableSelect.addEventListener('change', () => {
+      async function fetchConstraints(tableName) {
+        const url = `http://localhost:3001/api/get/table_constraints?tableName=${encodeURIComponent(tableName)}`;
+        const data = await safeGetJson(url);
+        pkCols = new Set((data.pk || []).map(String));
+        fkCols = new Set((data.fks || []).map(f => String(f.column)));
+      }
+
+      /** Returns [pkName, pkIndex] or falls back to the first column */
+      function getPkNameAndIndex() {
+        if (!currentColumns || currentColumns.length === 0) {
+          return [null, -1];
+        }
+        let pkName = null;
+        for (const c of currentColumns) {
+          if (pkCols.has(c)) { pkName = c; break; }
+        }
+        if (!pkName) {
+          // fallback: first column
+          pkName = currentColumns[0];
+        }
+        const pkIdx = currentColumns.indexOf(pkName);
+        return [pkName, pkIdx];
+      }
+
+      /* --- Events --- */
+      tableSelect.addEventListener('change', async () => {
         const tableName = tableSelect.value;
+        currentTable = tableName;
         const cols = tablesData[tableName] || [];
+
         columnSelect.innerHTML = '<option value="">-- No Filter --</option>';
         cols.forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c;
-            opt.textContent = c;
-            columnSelect.appendChild(opt);
+          const opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          columnSelect.appendChild(opt);
         });
-    });
-    tableSelect.dispatchEvent(new Event('change'));
 
-    async function fetchTableData(tableName, columnName = "", value = "") {
+        await fetchConstraints(tableName);
+        // Clear previous results/suggestions when table changes
+        rowValueInput.value = '';
+        suggestionBox.innerHTML = '';
+        suggestionBox.style.display = 'none';
+        resultDiv.innerHTML = '';
+      });
+
+      // Trigger once on load
+      tableSelect.dispatchEvent(new Event('change'));
+
+      async function fetchTableData(tableName, columnName = "", value = "") {
         currentTable = tableName;
         try {
-            let url = `http://localhost:3001/api/get/table_data?tableName=${encodeURIComponent(tableName)}`;
-            if (columnName) url += `&columnName=${encodeURIComponent(columnName)}`;
-            if (value !== undefined && value !== null && value !== "") url += `&value=${encodeURIComponent(value)}`;
+          let url = `http://localhost:3001/api/get/table_data?tableName=${encodeURIComponent(tableName)}`;
+          if (columnName) url += `&columnName=${encodeURIComponent(columnName)}`;
+          if (value !== undefined && value !== null && value !== "") url += `&value=${encodeURIComponent(value)}`;
 
-            const data = await safeGetJson(url);
-            if (!data.ok) {
-                resultDiv.innerHTML = `<p class="text-red-500">${escapeHtml(data.error || 'Server error')}</p>`;
-                return;
-            }
+          const data = await safeGetJson(url);
+          if (!data.ok) {
+            resultDiv.innerHTML = `<p class="text-red-500">${escapeHtml(data.error || 'Server error')}</p>`;
+            return;
+          }
 
-            const columns = data.columns || [];
-            const rows = data.rows || [];
+          const columns = data.columns || [];
+          const rows = data.rows || [];
 
-            currentColumns = columns;
-            currentRows = rows;
+          currentColumns = columns;
+          currentRows = rows;
 
-            if (!rows || rows.length === 0) {
-                resultDiv.innerHTML = `<p class="text-gray-700 text-center font-semibold">No data found</p>`;
-                return;
-            }
+          if (!rows || rows.length === 0) {
+            resultDiv.innerHTML = `<p class="text-gray-700 text-center font-semibold">No data found</p>`;
+            return;
+          }
 
-            let html = `<table class="w-full border border-gray-300 text-left table-auto"><thead class="bg-gray-200"><tr>`;
-            html += `<th class="px-3 py-2 border">Actions</th>`;
-            columns.forEach(col => { html += `<th class="px-4 py-2 border">${escapeHtml(col)}</th>`; });
-            html += `</tr></thead><tbody>`;
+          let html = `
+            <table class="w-full border border-gray-300 text-left table-auto">
+              <thead class="bg-gray-200">
+                <tr>
+                  <th class="px-3 py-2 border sticky left-0 bg-gray-200">Actions</th>
+                  ${columns.map(col => `<th class="px-4 py-2 border">${escapeHtml(col)}</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+          `;
 
-            rows.forEach((row, idx) => {
-                html += `<tr>`;
-                html += `<td class="px-3 py-2 border"><div class="flex items-center space-x-2">
-                            <button data-idx="${idx}" class="editBtn text-blue-600 hover:text-blue-900" title="Edit"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg></button>
-                            <button data-idx="${idx}" class="deleteBtn text-red-600 hover:text-red-900" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg></button>
-                         </div></td>`;
-                row.forEach(cell => {
-                    const out = (cell === null) ? '<em>null</em>' : escapeHtml(cell);
-                    html += `<td class="px-4 py-2 border">${out}</td>`;
-                });
-                html += `</tr>`;
+          rows.forEach((row, idx) => {
+            html += `
+              <tr class="odd:bg-white even:bg-gray-50">
+                <td class="px-3 py-2 border sticky left-0 bg-white">
+                  <div class="flex items-center space-x-2">
+                    <button data-idx="${idx}" class="editBtn text-blue-600 hover:text-blue-900" title="Edit" aria-label="Edit row ${idx + 1}">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                           stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                      </svg>
+                    </button>
+                    <button data-idx="${idx}" class="deleteBtn text-red-600 hover:text-red-900" title="Delete" aria-label="Delete row ${idx + 1}">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                           stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+                ${row.map(cell => `<td class="px-4 py-2 border">${cell === null ? '<em>null</em>' : escapeHtml(cell)}</td>`).join('')}
+              </tr>
+            `;
+          });
+
+          html += `</tbody></table>`;
+          resultDiv.innerHTML = html;
+
+          // Row actions
+          document.querySelectorAll('.deleteBtn').forEach(b => {
+            b.addEventListener('click', () => {
+              deleteIndex = Number(b.getAttribute('data-idx'));
+              openModal(deleteModal, true);
             });
-
-            html += `</tbody></table>`;
-            resultDiv.innerHTML = html;
-
-            document.querySelectorAll('.deleteBtn').forEach(b => {
-                b.addEventListener('click', (e) => {
-                    deleteIndex = Number(b.getAttribute('data-idx'));
-                    deleteModal.classList.remove('hidden');
-                });
+          });
+          document.querySelectorAll('.editBtn').forEach(b => {
+            b.addEventListener('click', () => {
+              editIndex = Number(b.getAttribute('data-idx'));
+              showEditModal(editIndex);
             });
-            document.querySelectorAll('.editBtn').forEach(b => {
-                b.addEventListener('click', (e) => {
-                    editIndex = Number(b.getAttribute('data-idx'));
-                    showEditModal(editIndex);
-                });
-            });
-
+          });
         } catch (err) {
-            console.error(err);
-            resultDiv.innerHTML = `<p class="text-red-500">Error fetching table data</p>`;
+          console.error(err);
+          resultDiv.innerHTML = `<p class="text-red-500">Error fetching table data</p>`;
         }
-    }
+      }
 
-    form.addEventListener('submit', (e) => {
+      /* Search & list */
+      form.addEventListener('submit', (e) => {
         e.preventDefault();
         const tableName = tableSelect.value;
         const columnName = columnSelect.value;
         const value = rowValueInput.value.trim();
         fetchTableData(tableName, columnName, value);
-    });
+      });
 
-    showAllBtn.addEventListener('click', () => {
+      showAllBtn.addEventListener('click', () => {
         const tableName = tableSelect.value;
         fetchTableData(tableName);
-    });
+      });
 
-    resetBtn.addEventListener('click', () => {
-        rowValueInput.value = "";
-        columnSelect.value = "";
-        resultDiv.innerHTML = "";
-        suggestionBox.innerHTML = "";
+      resetBtn.addEventListener('click', () => {
+        rowValueInput.value = '';
+        columnSelect.value = '';
+        resultDiv.innerHTML = '';
+        suggestionBox.innerHTML = '';
         suggestionBox.style.display = 'none';
         currentRows = [];
         currentColumns = [];
-    });
+      });
 
-    let debounceTimer = null;
-    rowValueInput.addEventListener('input', () => {
+      /* Suggestions (with keyboard navigation) */
+      rowValueInput.addEventListener('input', () => {
         const tableName = tableSelect.value;
         const columnName = columnSelect.value;
         const q = rowValueInput.value.trim();
 
-        suggestionBox.innerHTML = "";
+        suggestionBox.innerHTML = '';
         suggestionBox.style.display = 'none';
+        suggestionActive = -1;
         if (!columnName || !q) return;
 
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(async () => {
-            try {
-                const url = `http://localhost:3001/api/get/table_column_suggestions?tableName=${encodeURIComponent(tableName)}&columnName=${encodeURIComponent(columnName)}&query=${encodeURIComponent(q)}`;
-                const data = await safeGetJson(url);
-                if (!data.ok) return;
+          try {
+            const url = `http://localhost:3001/api/get/table_column_suggestions?tableName=${encodeURIComponent(tableName)}&columnName=${encodeURIComponent(columnName)}&query=${encodeURIComponent(q)}`;
+            const data = await safeGetJson(url);
+            if (!data.ok) return;
 
-                const suggestions = data.suggestions || [];
-                suggestionBox.innerHTML = "";
-                suggestions.forEach(s => {
-                    const item = document.createElement('div');
-                    item.className = "px-2 py-1 hover:bg-gray-200 cursor-pointer";
-                    item.textContent = s;
-                    item.addEventListener('click', () => {
-                        rowValueInput.value = s;
-                        suggestionBox.innerHTML = "";
-                        suggestionBox.style.display = 'none';
-                        fetchTableData(tableName, columnName, s);
-                    });
-                    suggestionBox.appendChild(item);
-                });
-
-                if (suggestions.length > 0) suggestionBox.style.display = 'block';
-            } catch (err) {
-                console.error(err);
-            }
-        }, 300);
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!rowValueInput.contains(e.target) && !suggestionBox.contains(e.target)) {
-            suggestionBox.innerHTML = "";
-            suggestionBox.style.display = 'none';
-        }
-    });
-
-    deleteCancelBtn.addEventListener('click', () => deleteModal.classList.add('hidden'));
-    deleteConfirmBtn.addEventListener('click', async () => {
-        if (deleteIndex === null || currentRows.length <= deleteIndex) return;
-        const pkName = currentColumns[0];
-        const pkValue = currentRows[deleteIndex][0];
-        try {
-            const res = await fetch(`http://localhost:3001/api/post/delete_row`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tableName: currentTable, pkName, pkValue })
+            const suggestions = data.suggestions || [];
+            suggestionBox.innerHTML = '';
+            suggestions.forEach((s, i) => {
+              const item = document.createElement('div');
+              item.className = 'px-2 py-1 hover:bg-gray-200 cursor-pointer';
+              item.setAttribute('role', 'option');
+              item.setAttribute('data-idx', String(i));
+              item.textContent = s;
+              item.addEventListener('click', () => {
+                rowValueInput.value = s;
+                suggestionBox.innerHTML = '';
+                suggestionBox.style.display = 'none';
+                fetchTableData(tableName, columnName, s);
+              });
+              suggestionBox.appendChild(item);
             });
-            const data = await res.json();
-            if (data.ok) {
-                deleteModal.classList.add('hidden');
-                await fetchTableData(currentTable);
-            } else {
-                alert('Silinemedi: ' + (data.error || 'Unknown'));
-            }
-        } catch (err) {
-            console.error(err);
-            alert('Silme isteği sırasında hata.');
-        }
-    });
 
-    function showEditModal(idx) {
+            if (suggestions.length > 0) suggestionBox.style.display = 'block';
+          } catch (err) {
+            console.error(err);
+          }
+        }, 300);
+      });
+
+      rowValueInput.addEventListener('keydown', (e) => {
+        const items = Array.from(suggestionBox.children);
+        if (suggestionBox.style.display !== 'block' || items.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          suggestionActive = (suggestionActive + 1) % items.length;
+          updateActiveSuggestion(items);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          suggestionActive = (suggestionActive - 1 + items.length) % items.length;
+          updateActiveSuggestion(items);
+        } else if (e.key === 'Enter') {
+          if (suggestionActive >= 0) {
+            e.preventDefault();
+            items[suggestionActive].click();
+          }
+        } else if (e.key === 'Escape') {
+          suggestionBox.innerHTML = '';
+          suggestionBox.style.display = 'none';
+          suggestionActive = -1;
+        }
+      });
+
+      function updateActiveSuggestion(items) {
+        items.forEach((el, i) => {
+          if (i === suggestionActive) {
+            el.classList.add('bg-gray-200');
+          } else {
+            el.classList.remove('bg-gray-200');
+          }
+        });
+      }
+
+      document.addEventListener('click', (e) => {
+        if (!rowValueInput.contains(e.target) && !suggestionBox.contains(e.target)) {
+          suggestionBox.innerHTML = '';
+          suggestionBox.style.display = 'none';
+          suggestionActive = -1;
+        }
+      });
+
+      /* Delete modal */
+      deleteCancelBtn.addEventListener('click', () => {
+        closeModal(deleteModal);
+      });
+
+      deleteConfirmBtn.addEventListener('click', async () => {
+        if (deleteIndex === null || currentRows.length <= deleteIndex) return;
+
+        const [pkName, pkIdx] = getPkNameAndIndex();
+        if (pkIdx < 0) {
+          alert('PK column could not be determined.');
+          return;
+        }
+        const pkValue = currentRows[deleteIndex][pkIdx];
+
+        try {
+          const res = await fetch(`http://localhost:3001/api/post/delete_row`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tableName: currentTable, pkName, pkValue })
+          });
+          const data = await res.json();
+          if (data.ok) {
+            closeModal(deleteModal);
+            await fetchTableData(currentTable);
+          } else {
+            alert('Silinemedi: ' + (data.error || 'Unknown'));
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Silme isteği sırasında hata.');
+        }
+      });
+
+      /* Edit modal */
+      function showEditModal(idx) {
         if (idx === null || idx === undefined) return;
 
         const row = currentRows[idx];
         editForm.innerHTML = '';
+
         currentColumns.forEach((col, cidx) => {
-            const val = row[cidx] === null ? '' : row[cidx];
-            const fieldWrapper = document.createElement('div');
-            fieldWrapper.className = 'mb-2';
-            fieldWrapper.innerHTML = `
-            <label class="block font-semibold mb-1">${escapeHtml(col)}</label>
-            <input name="${escapeHtml(col)}" value="${escapeHtml(val)}" class="w-full border rounded px-2 py-1"/>
-        `;
-            editForm.appendChild(fieldWrapper);
+          const val = row[cidx] === null ? '' : row[cidx];
+          const isLocked = pkCols.has(col) || fkCols.has(col);
+          const tip = isLocked ? '<span class="text-xs text-gray-500 ml-1">(locked)</span>' : '';
+
+          const fieldWrapper = document.createElement('div');
+          fieldWrapper.className = 'mb-2';
+          fieldWrapper.innerHTML = `
+            <label class="block font-semibold mb-1">${escapeHtml(col)} ${tip}</label>
+            <input
+              name="${escapeHtml(col)}"
+              value="${escapeHtml(val)}"
+              class="w-full border rounded px-2 py-1"
+              ${isLocked ? 'disabled' : ''}
+            />
+          `;
+          editForm.appendChild(fieldWrapper);
         });
 
-        document.body.style.overflow = 'hidden';
-
-        const modalContent = editModal.querySelector('div');
-        modalContent.scrollTop = 0;
-
-        editModal.classList.remove('hidden');
-
-        const firstInput = editForm.querySelector('input');
+        openModal(editModal, true);
+        const firstInput = editForm.querySelector('input:not([disabled])') || editForm.querySelector('input');
         if (firstInput) firstInput.focus();
-    }
+      }
 
-    editCancelBtn.addEventListener('click', () => {
-        editModal.classList.add('hidden');
-        document.body.style.overflow = '';
-    });
-    editSaveBtn.addEventListener('click', async (e) => {
+      editCancelBtn.addEventListener('click', () => {
+        closeModal(editModal);
+      });
+
+      editSaveBtn.addEventListener('click', async (e) => {
         e.preventDefault();
         if (editIndex === null || currentRows.length <= editIndex) return;
-        const pkName = currentColumns[0];
-        const oldPkValue = currentRows[editIndex][0];
-        const formData = Object.fromEntries(new FormData(editForm).entries());
-        try {
-            const res = await fetch(`http://localhost:3001/api/post/update_row`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    tableName: currentTable,
-                    pkName,
-                    oldPkValue,
-                    newValues: formData
-                })
-            });
-            const data = await res.json();
-            if (data.ok) {
-                editModal.classList.add('hidden');
-                document.body.style.overflow = '';
-                await fetchTableData(currentTable);
-            } else {
-                alert('Güncellenemedi: ' + (data.error || 'Unknown'));
-            }
-        } catch (err) {
-            console.error(err);
-            alert('Güncelleme isteği sırasında hata.');
+
+        const [pkName, pkIdx] = getPkNameAndIndex();
+        if (pkIdx < 0) {
+          alert('PK column could not be determined.');
+          return;
         }
-    });
-</script>
-</body>
+        const oldPkValue = currentRows[editIndex][pkIdx];
+        const formData = Object.fromEntries(new FormData(editForm).entries());
+
+        try {
+          const res = await fetch(`http://localhost:3001/api/post/update_row`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tableName: currentTable, pkName, oldPkValue, newValues: formData })
+          });
+          const data = await res.json();
+          if (data.ok) {
+            closeModal(editModal);
+            await fetchTableData(currentTable);
+          } else {
+            alert('Güncellenemedi: ' + (data.error || 'Unknown'));
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Güncelleme isteği sırasında hata.');
+        }
+      });
+
+      /* Insert modal */
+      insertBtn?.addEventListener('click', () => {
+        if (!currentTable) return;
+        insertForm.innerHTML = '';
+
+        (tablesData[currentTable] || []).forEach(col => {
+          insertForm.insertAdjacentHTML('beforeend', `
+            <div class="mb-2">
+              <label class="block font-semibold mb-1">
+                ${escapeHtml(col)}
+                ${pkCols.has(col) ? '<span class="text-xs text-gray-500 ml-1">(PK)</span>' : ''}
+                ${fkCols.has(col) ? '<span class="text-xs text-gray-500 ml-1">(FK)</span>' : ''}
+              </label>
+              <input name="${escapeHtml(col)}" class="w-full border rounded px-2 py-1"/>
+            </div>
+          `);
+        });
+
+        openModal(insertModal, true);
+      });
+
+      insertCancelBtn?.addEventListener('click', () => {
+        closeModal(insertModal);
+      });
+
+      insertSaveBtn?.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const formData = Object.fromEntries(new FormData(insertForm).entries());
+        try {
+          const res = await fetch(`http://localhost:3001/api/post/insert_row`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tableName: currentTable, values: formData })
+          });
+          const data = await res.json();
+          if (data.ok) {
+            closeModal(insertModal);
+            await fetchTableData(currentTable);
+          } else {
+            alert('Eklenemedi: ' + (data.error || 'Unknown'));
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Insert sırasında hata.');
+        }
+      });
+
+      /* Modal helpers */
+      function openModal(el, lockScroll = false) {
+        el.classList.remove('hidden');
+        el.setAttribute('aria-hidden', 'false');
+        if (lockScroll) document.body.style.overflow = 'hidden';
+      }
+      function closeModal(el) {
+        el.classList.add('hidden');
+        el.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+      }
+    </script>
+  </body>
 </html>

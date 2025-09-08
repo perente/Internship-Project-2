@@ -248,6 +248,42 @@ export function createApiServer() {
     }
   });
 
+  getRouter.get("/table_constraints", async (req, res) => {
+    const tableName = String(req.query.tableName || "").toUpperCase();
+    if (!tableName) return res.json({ ok: false, error: "tableName required" });
+
+    const conn = await getConn();
+    try {
+      const pk = await conn.execute(
+        `SELECT acc.COLUMN_NAME
+         FROM USER_CONSTRAINTS ac
+         JOIN USER_CONS_COLUMNS acc ON ac.CONSTRAINT_NAME = acc.CONSTRAINT_NAME
+        WHERE ac.TABLE_NAME = :t AND ac.CONSTRAINT_TYPE = 'P'
+        ORDER BY acc.POSITION`,
+        { t: tableName }
+      );
+
+      const fks = await conn.execute(
+        `SELECT acc.COLUMN_NAME AS FK_COLUMN
+         FROM USER_CONSTRAINTS ac
+         JOIN USER_CONS_COLUMNS acc ON ac.CONSTRAINT_NAME = acc.CONSTRAINT_NAME
+        WHERE ac.TABLE_NAME = :t AND ac.CONSTRAINT_TYPE = 'R'
+        ORDER BY acc.POSITION`,
+        { t: tableName }
+      );
+
+      res.json({
+        ok: true,
+        pk: (pk.rows || []).map((r) => r[0]),
+        fks: (fks.rows || []).map((r) => ({ column: r[0] })),
+      });
+    } catch (e: any) {
+      res.json({ ok: false, error: e.message });
+    } finally {
+      await conn.close();
+    }
+  });
+
   postRouter.post("/delete_row", async (req, res) => {
     try {
       const { tableName, pkName, pkValue } = req.body;
@@ -270,51 +306,102 @@ export function createApiServer() {
   });
 
   postRouter.post("/update_row", async (req, res) => {
+    const { tableName, pkName, oldPkValue, newValues } = req.body || {};
+    if (!tableName || !pkName || !newValues) {
+      return res.json({
+        ok: false,
+        error: "tableName, pkName, newValues required",
+      });
+    }
+
+    const conn = await getConn();
     try {
-      const { tableName, pkName, oldPkValue, newValues } = req.body;
-      if (!tableName || !pkName || oldPkValue === undefined || !newValues) {
-        return res.json({
-          ok: false,
-          error: "Received incomplete parameters.",
-        });
+      const pkRows = await conn.execute(
+        `SELECT acc.COLUMN_NAME
+         FROM USER_CONSTRAINTS ac
+         JOIN USER_CONS_COLUMNS acc ON ac.CONSTRAINT_NAME = acc.CONSTRAINT_NAME
+        WHERE ac.TABLE_NAME = :t AND ac.CONSTRAINT_TYPE = 'P'`,
+        { t: tableName.toUpperCase() }
+      );
+      const fkRows = await conn.execute(
+        `SELECT acc.COLUMN_NAME
+         FROM USER_CONSTRAINTS ac
+         JOIN USER_CONS_COLUMNS acc ON ac.CONSTRAINT_NAME = acc.CONSTRAINT_NAME
+        WHERE ac.TABLE_NAME = :t AND ac.CONSTRAINT_TYPE = 'R'`,
+        { t: tableName.toUpperCase() }
+      );
+      const pkSet = new Set((pkRows.rows || []).map((r) => String(r[0])));
+      const fkSet = new Set((fkRows.rows || []).map((r) => String(r[0])));
+
+      const filtered = Object.fromEntries(
+        Object.entries(newValues || {}).filter(
+          ([k]) => !(pkSet.has(k) || fkSet.has(k))
+        )
+      );
+      if (Object.keys(filtered).length === 0) {
+        return res.json({ ok: true }); 
       }
 
-      const conn = await getConn();
+      const sets: string[] = [];
+      const binds: Record<string, any> = { pk: oldPkValue }; 
+      let i = 0;
 
-      const cols = Object.keys(newValues);
-      const setClauses: string[] = [];
-      const bindParams: any = {};
+      for (const [col, raw] of Object.entries(filtered)) {
+        const b = `b${i++}`; 
+        const v = raw === "" ? null : raw; 
+        sets.push(`${col} = :${b}`);
+        binds[b] = v; 
+      }
 
-      cols.forEach((col) => {
-        let val = newValues[col];
-
-        if (
-          typeof val === "string" &&
-          /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?/.test(val)
-        ) {
-          val = val.replace("T", " ").replace("Z", "").split(".")[0];
-          setClauses.push(
-            `${col} = TO_TIMESTAMP(:${col}, 'YYYY-MM-DD HH24:MI:SS')`
-          );
-        } else {
-          setClauses.push(`${col} = :${col}`);
-        }
-
-        bindParams[col] = val;
-      });
-
-      const sql = `UPDATE ${tableName} SET ${setClauses.join(
+      const sql = `UPDATE ${tableName} SET ${sets.join(
         ", "
       )} WHERE ${pkName} = :pk`;
-      bindParams.pk = oldPkValue;
+      await conn.execute(sql, binds, { autoCommit: true });
 
-      await conn.execute(sql, bindParams, { autoCommit: true });
-
-      await conn.close();
       res.json({ ok: true });
     } catch (e: any) {
-      console.log(e.message);
       res.json({ ok: false, error: e.message });
+    } finally {
+      await conn.close();
+    }
+  });
+
+  postRouter.post("/insert_row", async (req, res) => {
+    const { tableName, values } = req.body || {};
+    if (!tableName || !values) {
+      return res.json({ ok: false, error: "tableName & values required" });
+    }
+
+    const cols = Object.keys(values);
+    if (cols.length === 0) {
+      return res.json({ ok: false, error: "No columns to insert" });
+    }
+
+    const binds: Record<string, any> = {};
+    const placeholders = cols
+      .map((_, i) => {
+        const key = `b${i}`;
+        let v = values[cols[i]];
+
+        if (v === "") v = null;
+
+        binds[key] = v;
+        return `:${key}`;
+      })
+      .join(",");
+
+    const sql = `INSERT INTO ${tableName} (${cols.join(
+      ","
+    )}) VALUES (${placeholders})`;
+
+    const conn = await getConn();
+    try {
+      await conn.execute(sql, binds, { autoCommit: true });
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, error: e.message });
+    } finally {
+      await conn.close();
     }
   });
 
