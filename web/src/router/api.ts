@@ -5,10 +5,14 @@ import { getConn, closePool } from "../db/oracle";
 export function createApiServer() {
   const app = express();
 
-  app.use(cors({ origin: "http://localhost:3000" }));
+  app.use(cors({
+    origin: "http://localhost:3000",
+    credentials: true
+  }));
   app.use(express.json());
 
   const getRouter = express.Router();
+  const postRouter = express.Router();
 
   getRouter.get("/tables", async (_req, res) => {
     try {
@@ -190,7 +194,65 @@ export function createApiServer() {
     }
   });
 
+  postRouter.post("/delete_row", async (req, res) => {
+    try {
+      const { tableName, pkName, pkValue } = req.body;
+      if (!tableName || !pkName || pkValue === undefined)
+        return res.json({ ok: false, error: "Received incomplete parameters." });
+
+      const conn = await getConn();
+
+      const sql = `DELETE FROM ${tableName} WHERE ${pkName} = :val`;
+      await conn.execute(sql, { val: pkValue }, { autoCommit: true });
+
+      await conn.close();
+      res.json({ ok: true });
+    } catch (e: any) {
+      res.json({ ok: false, error: e.message });
+    }
+  });
+
+  postRouter.post("/update_row", async (req, res) => {
+    try {
+      const { tableName, pkName, oldPkValue, newValues } = req.body;
+      if (!tableName || !pkName || oldPkValue === undefined || !newValues) {
+        return res.json({ ok: false, error: "Received incomplete parameters." });
+      }
+
+      const conn = await getConn();
+
+      const cols = Object.keys(newValues);
+      const setClauses: string[] = [];
+      const bindParams: any = {};
+
+      cols.forEach(col => {
+        let val = newValues[col];
+
+        if (typeof val === "string" && /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?/.test(val)) {
+          val = val.replace("T", " ").replace("Z", "").split(".")[0];
+          setClauses.push(`${col} = TO_TIMESTAMP(:${col}, 'YYYY-MM-DD HH24:MI:SS')`);
+        } else {
+          setClauses.push(`${col} = :${col}`);
+        }
+
+        bindParams[col] = val;
+      });
+
+      const sql = `UPDATE ${tableName} SET ${setClauses.join(", ")} WHERE ${pkName} = :pk`;
+      bindParams.pk = oldPkValue;
+
+      await conn.execute(sql, bindParams, { autoCommit: true });
+
+      await conn.close();
+      res.json({ ok: true });
+    } catch (e: any) {
+      console.log(e.message);
+      res.json({ ok: false, error: e.message });
+    }
+  });
+
   app.use("/api/get", getRouter);
+  app.use("/api/post", postRouter);
 
   app.get("/shutdown", async (_req, res) => {
     await closePool();
