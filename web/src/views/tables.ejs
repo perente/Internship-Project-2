@@ -1,203 +1,307 @@
 <!DOCTYPE html>
 <html lang="en">
-<%- include('layouts/head', {title: "Tables"}) %>
-<body class="flex h-screen bg-gray-100">
+  <%- include('layouts/head', { title: "Tables" }) %>
+  <body class="flex h-screen bg-gray-100">
+    <%- include("layouts/sidebar") %>
 
-<%- include("layouts/sidebar") %>
+    <div class="flex flex-col flex-1">
+      <%- include("layouts/header") %>
 
-<div class="flex flex-col flex-1">
+      <main class="p-6 overflow-auto">
+        <form
+          id="tableForm"
+          class="bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto mb-6 relative"
+        >
+          <div class="mb-4 flex items-start space-x-2">
+            <div class="flex-1">
+              <label for="tableSelect" class="block font-semibold mb-1">
+                Select table:
+              </label>
 
-    <%- include("layouts/header") %>
-
-    <main class="p-6 overflow-auto">
-
-        <form id="tableForm" class="bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto mb-6 relative">
-            <div class="mb-4 flex items-start space-x-2">
-                <div class="flex-1">
-                    <label for="tableSelect" class="block font-semibold mb-1">Select table:</label>
-                    <select id="tableSelect" name="tableName" required
-                            class="w-full border border-gray-300 rounded px-3 py-2">
-                        <% Object.keys(tables).forEach(function(tableName){ %>
-                            <option value="<%= tableName %>"><%= tableName %></option>
-                        <% }); %>
-                    </select>
-                </div>
-                <button type="button" id="showAllBtn" title="List All Data"
-                        class="mt-7 text-gray-600 hover:text-gray-900 p-2 border rounded" style="padding: 0.4rem;">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                    </svg>
-                </button>
+              <select
+                id="tableSelect"
+                name="tableName"
+                required
+                class="w-full border border-gray-300 rounded px-3 py-2"
+              >
+                <% Object.keys(tables).forEach(function (tableName) { %>
+                <option value="<%= tableName %>"><%= tableName %></option>
+                <% }); %>
+              </select>
             </div>
 
-            <div class="mb-2">
-                <label for="columnSelect" class="block font-semibold mb-1">Filter by column & value (optional):</label>
-                <select id="columnSelect" name="columnName"
-                        class="w-full border border-gray-300 rounded px-3 py-2">
-                    <option value="">-- No Filter --</option>
-                </select>
-            </div>
+            <button
+              type="button"
+              id="showAllBtn"
+              title="List All Data"
+              class="mt-7 text-gray-600 hover:text-gray-900 p-2 border rounded"
+              style="padding: 0.4rem"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="size-6"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"
+                />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                />
+              </svg>
+            </button>
+          </div>
 
-            <div class="mb-4 relative">
-                <input type="text" id="rowValue" name="value"
-                       class="w-full border border-gray-300 rounded px-3 py-2" placeholder="Enter value for column (optional)" autocomplete="off">
-                <div id="suggestionBox" class="absolute w-full bg-white border rounded shadow mt-1 z-50 hidden"></div>
-            </div>
+          <div class="mb-2">
+            <label for="columnSelect" class="block font-semibold mb-1">
+              Filter by column & value (optional):
+            </label>
 
-            <div class="flex space-x-2">
-                <button type="submit"
-                        class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">
-                    Show Data
-                </button>
+            <select
+              id="columnSelect"
+              name="columnName"
+              class="w-full border border-gray-300 rounded px-3 py-2"
+            >
+              <option value="">-- No Filter --</option>
+            </select>
+          </div>
 
-                <button type="button" id="resetBtn"
-                        class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">
-                    Reset
-                </button>
-            </div>
+          <div class="mb-4 relative">
+            <input
+              type="text"
+              id="rowValue"
+              name="value"
+              class="w-full border border-gray-300 rounded px-3 py-2"
+              placeholder="Enter value for column (optional)"
+              autocomplete="off"
+            />
+
+            <div
+              id="suggestionBox"
+              class="absolute w-full bg-white border rounded shadow mt-1 z-50 hidden"
+            ></div>
+          </div>
+
+          <div class="flex space-x-2">
+            <button
+              type="submit"
+              class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
+            >
+              Show Data
+            </button>
+
+            <button
+              type="button"
+              id="resetBtn"
+              class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition"
+            >
+              Reset
+            </button>
+          </div>
         </form>
 
         <div id="result" class="max-w-6xl mx-auto overflow-auto"></div>
+      </main>
+    </div>
 
-    </main>
-</div>
+    <script>
+      const form = document.getElementById("tableForm");
+      const resultDiv = document.getElementById("result");
+      const resetBtn = document.getElementById("resetBtn");
+      const tableSelect = document.getElementById("tableSelect");
+      const columnSelect = document.getElementById("columnSelect");
+      const showAllBtn = document.getElementById("showAllBtn");
+      const rowValueInput = document.getElementById("rowValue");
+      const suggestionBox = document.getElementById("suggestionBox");
 
-<script>
-    const form = document.getElementById('tableForm');
-    const resultDiv = document.getElementById('result');
-    const resetBtn = document.getElementById('resetBtn');
-    const tableSelect = document.getElementById('tableSelect');
-    const columnSelect = document.getElementById('columnSelect');
-    const showAllBtn = document.getElementById('showAllBtn');
-    const rowValueInput = document.getElementById('rowValue');
-    const suggestionBox = document.getElementById('suggestionBox');
+      const tablesData = <%- JSON.stringify(tables) %>;
 
-    const tablesData = <%- JSON.stringify(tables) %>;
-
-    tableSelect.addEventListener('change', () => {
+      // Populate column list when table changes
+      tableSelect.addEventListener("change", () => {
         const tableName = tableSelect.value;
         const columns = tablesData[tableName] || [];
+
         columnSelect.innerHTML = '<option value="">-- No Filter --</option>';
-        columns.forEach(col => {
-            const option = document.createElement('option');
-            option.value = col;
-            option.textContent = col;
-            columnSelect.appendChild(option);
+        columns.forEach((col) => {
+          const option = document.createElement("option");
+          option.value = col;
+          option.textContent = col;
+          columnSelect.appendChild(option);
         });
-    });
+      });
 
-    tableSelect.dispatchEvent(new Event('change'));
+      // Trigger initial population
+      tableSelect.dispatchEvent(new Event("change"));
 
-    async function fetchTableData(tableName, columnName="", value="") {
-        try {
-            let url = `http://localhost:3001/api/get/table_data?tableName=${encodeURIComponent(tableName)}`;
-            if(columnName) url += `&columnName=${encodeURIComponent(columnName)}`;
-            if(value) url += `&value=${encodeURIComponent(value)}`;
+      // Pretty-format ISO timestamps
+      function formatCell(val) {
+        if (val === null || val === undefined) return "";
+        const s = String(val);
 
-            const response = await fetch(url);
-            const data = await response.json();
-
-            if (!data.ok) {
-                resultDiv.innerHTML = `<p class="text-red-500">${data.error}</p>`;
-                return;
-            }
-
-            const columns = data.columns || [];
-            const rows = data.rows || [];
-
-            if (rows.length === 0) {
-                resultDiv.innerHTML = `<p class="text-gray-700 text-center font-semibold">No data found</p>`;
-                return;
-            }
-
-            let html = `<table class="min-w-full border border-gray-300 text-left table-auto"><thead class="bg-gray-200"><tr>`;
-            columns.forEach(col => { html += `<th class="px-4 py-2 border">${col}</th>`; });
-            html += `</tr></thead><tbody>`;
-
-            rows.forEach(row => {
-                html += "<tr>";
-                row.forEach(cell => { html += `<td class="px-4 py-2 border">${cell}</td>`; });
-                html += "</tr>";
-            });
-
-            html += "</tbody></table>";
-            resultDiv.innerHTML = html;
-
-        } catch (err) {
-            resultDiv.innerHTML = `<p class="text-red-500">Error fetching table data</p>`;
-            console.error(err);
+        // ISO 8601: 2025-05-26T16:28:45.000Z (milliseconds optional)
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(s)) {
+          const d = new Date(s);
+          const pad = (n) => String(n).padStart(2, "0");
+          return (
+            `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+            `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+          );
         }
-    }
 
-    form.addEventListener('submit', (e) => {
+        return s;
+      }
+
+      // ✅ NEW: ISO timestamp checker for conditional nowrap
+      function isIsoTimestamp(s) {
+        return typeof s === "string" &&
+          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(s);
+      }
+
+      // Fetch & render table data
+      async function fetchTableData(tableName, columnName = "", value = "") {
+        try {
+          let url = `http://localhost:3001/api/get/table_data?tableName=${encodeURIComponent(
+            tableName
+          )}`;
+          if (columnName) url += `&columnName=${encodeURIComponent(columnName)}`;
+          if (value) url += `&value=${encodeURIComponent(value)}`;
+
+          const response = await fetch(url);
+          const data = await response.json();
+
+          if (!data.ok) {
+            resultDiv.innerHTML = `<p class="text-red-500">${data.error}</p>`;
+            return;
+          }
+
+          const columns = data.columns || [];
+          const rows = data.rows || [];
+
+          if (rows.length === 0) {
+            resultDiv.innerHTML =
+              '<p class="text-gray-700 text-center font-semibold">No data found</p>';
+            return;
+          }
+
+          let html =
+            '<table class="min-w-full border border-gray-300 text-left table-auto">' +
+            '<thead class="bg-gray-200"><tr>';
+
+          columns.forEach((col) => {
+            html += `<th class="px-4 py-2 border">${col}</th>`;
+          });
+
+          html += "</tr></thead><tbody>";
+
+          // ✅ UPDATED: conditional nowrap only for ISO timestamps
+          rows.forEach((row) => {
+            html += "<tr>";
+            row.forEach((cell) => {
+              const noWrapClass = isIsoTimestamp(String(cell)) ? "whitespace-nowrap" : "";
+              html += `<td class="px-4 py-2 border ${noWrapClass}">${formatCell(cell)}</td>`;
+            });
+            html += "</tr>";
+          });
+
+          html += "</tbody></table>";
+          resultDiv.innerHTML = html;
+        } catch (err) {
+          resultDiv.innerHTML =
+            '<p class="text-red-500">Error fetching table data</p>';
+          console.error(err);
+        }
+      }
+
+      // Form submit
+      form.addEventListener("submit", (e) => {
         e.preventDefault();
         const tableName = tableSelect.value;
         const columnName = columnSelect.value;
         const value = rowValueInput.value.trim();
         fetchTableData(tableName, columnName, value);
-    });
+      });
 
-    showAllBtn.addEventListener('click', () => {
+      // Show all
+      showAllBtn.addEventListener("click", () => {
         const tableName = tableSelect.value;
         fetchTableData(tableName);
-    });
+      });
 
-    resetBtn.addEventListener('click', () => {
+      // Reset
+      resetBtn.addEventListener("click", () => {
         rowValueInput.value = "";
         columnSelect.value = "";
         suggestionBox.innerHTML = "";
         suggestionBox.style.display = "none";
         resultDiv.innerHTML = "";
-    });
+      });
 
-    let debounceTimer;
-    rowValueInput.addEventListener('input', () => {
+      // Suggestions (debounced)
+      let debounceTimer;
+      rowValueInput.addEventListener("input", () => {
         const tableName = tableSelect.value;
         const columnName = columnSelect.value;
         const query = rowValueInput.value.trim();
 
         suggestionBox.innerHTML = "";
         suggestionBox.style.display = "none";
-        if(!columnName || !query) return;
+        if (!columnName || !query) return;
 
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(async () => {
-            try {
-                const response = await fetch(`http://localhost:3001/api/get/table_column_suggestions?tableName=${encodeURIComponent(tableName)}&columnName=${encodeURIComponent(columnName)}&query=${encodeURIComponent(query)}`);
-                const data = await response.json();
-                if(!data.ok) return;
+          try {
+            const url =
+              `http://localhost:3001/api/get/table_column_suggestions` +
+              `?tableName=${encodeURIComponent(tableName)}` +
+              `&columnName=${encodeURIComponent(columnName)}` +
+              `&query=${encodeURIComponent(query)}`;
 
-                suggestionBox.innerHTML = "";
-                data.suggestions.forEach(s => {
-                    const div = document.createElement('div');
-                    div.className = "px-2 py-1 hover:bg-gray-200 cursor-pointer";
-                    div.textContent = s;
-                    div.addEventListener('click', () => {
-                        rowValueInput.value = s;
-                        suggestionBox.innerHTML = "";
-                        suggestionBox.style.display = "none";
-                        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-                    });
-                    suggestionBox.appendChild(div);
-                });
+            const response = await fetch(url);
+            const data = await response.json();
+            if (!data.ok) return;
 
-                if(data.suggestions.length > 0) {
-                    suggestionBox.style.display = "block";
-                }
-
-            } catch(e) {
-                console.error(e);
-            }
-        }, 300);
-    });
-
-    document.addEventListener('click', (e) => {
-        if(!rowValueInput.contains(e.target) && !suggestionBox.contains(e.target)) {
             suggestionBox.innerHTML = "";
-            suggestionBox.style.display = "none";
+            data.suggestions.forEach((s) => {
+              const div = document.createElement("div");
+              div.className = "px-2 py-1 hover:bg-gray-200 cursor-pointer";
+              div.textContent = s;
+              div.addEventListener("click", () => {
+                rowValueInput.value = s;
+                suggestionBox.innerHTML = "";
+                suggestionBox.style.display = "none";
+                form.dispatchEvent(
+                  new Event("submit", { bubbles: true, cancelable: true })
+                );
+              });
+              suggestionBox.appendChild(div);
+            });
+
+            if (data.suggestions.length > 0) {
+              suggestionBox.style.display = "block";
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }, 300);
+      });
+
+      // Close suggestions on outside click
+      document.addEventListener("click", (e) => {
+        if (
+          !rowValueInput.contains(e.target) &&
+          !suggestionBox.contains(e.target)
+        ) {
+          suggestionBox.innerHTML = "";
+          suggestionBox.style.display = "none";
         }
-    });
-</script>
-</body>
+      });
+    </script>
+  </body>
 </html>
