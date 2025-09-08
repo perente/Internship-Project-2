@@ -1,5 +1,7 @@
 import express from "express";
 import cors from "cors";
+import session from "express-session";
+import { buildAuthRouter } from "./auth";
 import { getConn, closePool } from "../db/oracle";
 
 export function createApiServer() {
@@ -12,6 +14,15 @@ export function createApiServer() {
     })
   );
   app.use(express.json());
+
+  app.use(
+    session({
+      secret: process.env.SESSION_SECRET || "dev-secret-change-me",
+      resave: false,
+      saveUninitialized: false,
+      cookie: { httpOnly: true, sameSite: "lax" },
+    })
+  );
 
   const getRouter = express.Router();
   const postRouter = express.Router();
@@ -407,6 +418,7 @@ export function createApiServer() {
 
   app.use("/api/get", getRouter);
   app.use("/api/post", postRouter);
+  app.use("/api/auth", buildAuthRouter());
 
   app.get("/shutdown", async (_req, res) => {
     await closePool();

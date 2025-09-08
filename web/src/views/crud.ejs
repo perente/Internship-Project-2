@@ -278,7 +278,6 @@
           if (pkCols.has(c)) { pkName = c; break; }
         }
         if (!pkName) {
-          // fallback: first column
           pkName = currentColumns[0];
         }
         const pkIdx = currentColumns.indexOf(pkName);
@@ -300,14 +299,12 @@
         });
 
         await fetchConstraints(tableName);
-        // Clear previous results/suggestions when table changes
         rowValueInput.value = '';
         suggestionBox.innerHTML = '';
         suggestionBox.style.display = 'none';
         resultDiv.innerHTML = '';
       });
 
-      // Trigger once on load
       tableSelect.dispatchEvent(new Event('change'));
 
       async function fetchTableData(tableName, columnName = "", value = "") {
@@ -374,7 +371,6 @@
           html += `</tbody></table>`;
           resultDiv.innerHTML = html;
 
-          // Row actions
           document.querySelectorAll('.deleteBtn').forEach(b => {
             b.addEventListener('click', () => {
               deleteIndex = Number(b.getAttribute('data-idx'));
@@ -417,7 +413,7 @@
         currentColumns = [];
       });
 
-      /* Suggestions (with keyboard navigation) */
+      /* Suggestions */
       rowValueInput.addEventListener('input', () => {
         const tableName = tableSelect.value;
         const columnName = columnSelect.value;
@@ -527,11 +523,11 @@
             closeModal(deleteModal);
             await fetchTableData(currentTable);
           } else {
-            alert('Silinemedi: ' + (data.error || 'Unknown'));
+            alert('Cannot delete: ' + (data.error || 'Unknown'));
           }
         } catch (err) {
           console.error(err);
-          alert('Silme isteği sırasında hata.');
+          alert('Error occurred while deleting.');
         }
       });
 
@@ -593,11 +589,11 @@
             closeModal(editModal);
             await fetchTableData(currentTable);
           } else {
-            alert('Güncellenemedi: ' + (data.error || 'Unknown'));
+            alert('Cannot update: ' + (data.error || 'Unknown'));
           }
         } catch (err) {
           console.error(err);
-          alert('Güncelleme isteği sırasında hata.');
+          alert('Error occurred while updating.');
         }
       });
 
@@ -640,11 +636,11 @@
             closeModal(insertModal);
             await fetchTableData(currentTable);
           } else {
-            alert('Eklenemedi: ' + (data.error || 'Unknown'));
+            alert('Cannot insert: ' + (data.error || 'Unknown'));
           }
         } catch (err) {
           console.error(err);
-          alert('Insert sırasında hata.');
+          alert('Error occurred while inserting.');
         }
       });
 

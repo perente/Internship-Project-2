@@ -1,10 +1,26 @@
 <header class="grid grid-cols-3 items-center bg-white shadow px-3 py-2">
-    <div class="flex items-center space-x-3">
-        <img src="/img/turkcell.png" alt="Logo" class="w-12 h-12 rounded-full object-contain filter invert">
-        <span class="text-3xl font-bold">DB Tools</span>
-    </div>
+  <div class="flex items-center space-x-3">
+    <img src="/img/turkcell.png" alt="Logo" class="w-12 h-12 rounded-full object-contain filter invert">
+    <span class="text-3xl font-bold">DB Tools</span>
+  </div>
 
-    <div class="text-center">
-        <span class="text-2xl font-semibold"><%= title %></span>
-    </div>
+  <div class="text-center">
+    <span class="text-2xl font-semibold"><%= title %></span>
+  </div>
+
+  <div class="flex justify-end gap-2">
+    <a href="/login" class="px-3 py-1 rounded bg-gray-200">Login</a>
+    <button id="logoutBtn" class="px-3 py-1 rounded bg-gray-200">Logout</button>
+  </div>
 </header>
+
+<script>
+  document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+    const r = await fetch('http://localhost:3001/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    const data = await r.json();
+    if (data.ok) location.href = '/login';
+  });
+</script>
