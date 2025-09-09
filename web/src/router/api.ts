@@ -494,10 +494,6 @@ export function createApiServer() {
     req.session.destroy(() => res.json({ ok: true }));
   });
 
-  authRouter.get("/me", (req: any, res) => {
-    res.json({ ok: true, user: req.session?.user || null });
-  });
-
   app.use("/api/get", getRouter);
   app.use("/api/post", postRouter);
   app.use("/api/auth", authRouter);
