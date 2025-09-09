@@ -40,6 +40,7 @@
               <input
                 name="username"
                 class="w-full border rounded p-2"
+                autocomplete="off"
                 required
               />
             </div>
@@ -49,6 +50,7 @@
                 name="email"
                 type="email"
                 class="w-full border rounded p-2"
+                autocomplete="off"
                 required
               />
             </div>
@@ -58,6 +60,7 @@
                 name="password"
                 type="password"
                 class="w-full border rounded p-2"
+                autocomplete="off"
                 required
               />
             </div>
@@ -79,6 +82,7 @@
               <input
                 name="userOrEmail"
                 class="w-full border rounded p-2"
+                autocomplete="off"
                 required
               />
             </div>
@@ -88,6 +92,7 @@
                 name="password"
                 type="password"
                 class="w-full border rounded p-2"
+                autocomplete="off"
                 required
               />
             </div>
@@ -101,51 +106,6 @@
           </form>
           <% } %>
         </div>
-        <script>
-          async function postJson(form, url) {
-            const fd = new FormData(form);
-            const body = {};
-            fd.forEach((v, k) => (body[k] = v));
-
-            const r = await fetch(url, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body: JSON.stringify(body),
-            });
-            return r.json();
-          }
-
-          function showError(msg) {
-            let box = document.querySelector("#errBox");
-            if (!box) {
-              box = document.createElement("div");
-              box.id = "errBox";
-              box.className = "mb-4 p-3 rounded bg-red-50 text-red-700";
-              const container = document.querySelector("h1")?.parentElement;
-              container?.insertBefore(box, container.children[1]);
-            }
-            box.textContent = msg;
-          }
-
-          const loginForm = document.getElementById("loginForm");
-          if (loginForm) {
-            loginForm.addEventListener("submit", async (e) => {
-              const data = await postJson(loginForm, loginForm.action);
-              if (data.ok) location.href = "/";
-              else showError(data.error || "Login failed");
-            });
-          }
-
-          const registerForm = document.getElementById("registerForm");
-          if (registerForm) {
-            registerForm.addEventListener("submit", async (e) => {
-              const data = await postJson(registerForm, registerForm.action);
-              if (data.ok) location.href = "/";
-              else showError(data.error || "Sign Up failed");
-            });
-          }
-        </script>
       </main>
     </div>
   </body>

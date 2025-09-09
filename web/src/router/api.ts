@@ -429,6 +429,19 @@ export function createApiServer() {
       });
     }
     const conn = await getConn();
+
+    const existing = await conn.execute(
+        `SELECT ID FROM USERS WHERE USERNAME = :u OR EMAIL = :e`,
+        { u: username, e: email }
+    );
+
+    if ((existing.rows || []).length > 0) {
+      return res.json({
+        ok: false,
+        error: "Username or Email already exists"
+      });
+    }
+
     try {
       await conn.execute(
           `INSERT INTO USERS (USERNAME, EMAIL, PASSWORD) VALUES (:u, :e, :p)`,
