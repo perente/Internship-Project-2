@@ -1,90 +1,111 @@
 import express from "express";
-import { getConn } from "../db/oracle";
+import jwt from "jsonwebtoken";
 
 export const requireAuth = (req: any, res: any, next: any) => {
-  if (req.session?.user) return next();
-  return res.status(401).json({ ok: false, error: "Login required" });
+  const token = req.cookies?.token;
+  if (!token) return res.redirect("/login");
+
+  try {
+    req.user = jwt.verify(token, "super-secret-key");
+    return next();
+  } catch (err) {
+    return res.redirect("/login");
+  }
 };
 
 export function buildAuthRouter() {
   const router = express.Router();
 
-  router.post("/register", async (req: any, res) => {
-    const { username, email, password } = req.body || {};
-    if (!username || !email || !password) {
-      return res.json({
-        ok: false,
-        error: "Username, Email and Password required",
+  router.get("/login", (req, res) => {
+    const mode = req.query.mode === "register" ? "register" : "login";
+    res.render("login", {
+      title: "Login",
+      activePage: "login",
+      error: null,
+      mode,
+    });
+  });
+
+  router.post("/login", async (req, res) => {
+    try {
+      const r = await fetch("http://localhost:3001/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userOrEmail: req.body.userOrEmail,
+          password: req.body.password,
+        }),
+      });
+
+      const data = await r.json();
+      if (!data.ok) {
+        return res.render("login", {
+          title: "Login",
+          activePage: "login",
+          error: data.error || "Login failed",
+          mode: "login",
+        });
+      }
+
+      res.cookie("token", data.token, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax"
+      });
+
+      return res.redirect("/");
+    } catch (e) {
+      return res.render("login", {
+        title: "Login",
+        activePage: "login",
+        error: "Server Error",
+        mode: "login",
       });
     }
-    const conn = await getConn();
-    try {
-      await conn.execute(
-        `INSERT INTO USERS (USERNAME, EMAIL, PASSWORD) VALUES (:u, :e, :p)`,
-        { u: username, e: email, p: password },
-        { autoCommit: true }
-      );
-
-      const r = await conn.execute(
-        `SELECT ID, USERNAME, EMAIL FROM USERS WHERE USERNAME=:u`,
-        { u: username }
-      );
-      const row = (r.rows || [])[0] as any;
-      const [ID, USERNAME, EMAIL] = Array.isArray(row)
-        ? row
-        : [row.ID, row.USERNAME, row.EMAIL];
-
-      req.session.user = { id: ID, username: USERNAME, email: EMAIL };
-      return res.json({ ok: true, user: req.session.user });
-    } catch (err: any) {
-      return res.json({ ok: false, error: err.message });
-    } finally {
-      await conn.close();
-    }
   });
 
-  router.post("/login", async (req: any, res) => {
-    const { userOrEmail, password } = req.body || {};
-    if (!userOrEmail || !password) {
-      return res.json({
-        ok: false,
-        error: "Username/Email and Password required",
+  router.post("/register", async (req, res) => {
+    try {
+      const r = await fetch("http://localhost:3001/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: req.body.username,
+          email: req.body.email,
+          password: req.body.password,
+        }),
+      });
+
+      const data = await r.json();
+      if (!data.ok) {
+        return res.render("login", {
+          title: "Login",
+          activePage: "login",
+          error: data.error || "Sign Up failed",
+          mode: "register",
+        });
+      }
+
+      res.cookie("token", data.token, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax"
+      });
+
+      return res.redirect("/");
+    } catch (e) {
+      return res.render("login", {
+        title: "Login",
+        activePage: "login",
+        error: "Server Error",
+        mode: "register",
       });
     }
-    const conn = await getConn();
-    try {
-      const r = await conn.execute(
-        `SELECT ID, USERNAME, EMAIL, PASSWORD
-           FROM USERS
-          WHERE USERNAME = :x OR EMAIL = :x`,
-        { x: userOrEmail }
-      );
-
-      const row = (r.rows || [])[0] as any;
-      if (!row) return res.json({ ok: false, error: "User not found" });
-
-      const [ID, USERNAME, EMAIL, PASS] = Array.isArray(row)
-        ? row
-        : [row.ID, row.USERNAME, row.EMAIL, row.PASSWORD];
-
-      if (PASS !== password)
-        return res.json({ ok: false, error: "Password is incorrect" });
-
-      req.session.user = { id: ID, username: USERNAME, email: EMAIL };
-      return res.json({ ok: true, user: req.session.user });
-    } catch (err: any) {
-      return res.json({ ok: false, error: err.message });
-    } finally {
-      await conn.close();
-    }
   });
 
-  router.post("/logout", (req: any, res) => {
-    req.session.destroy(() => res.json({ ok: true }));
-  });
-
-  router.get("/me", (req: any, res) => {
-    res.json({ ok: true, user: req.session?.user || null });
+  router.get("/logout", (req, res) => {
+    res.clearCookie("token");
+    res.redirect("/login");
   });
 
   return router;

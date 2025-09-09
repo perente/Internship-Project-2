@@ -33,7 +33,7 @@
           <form
             id="registerForm"
             method="POST"
-            action="http://localhost:3001/api/auth/register"
+            action="http://localhost:3000/register"
             class="space-y-4"
           >
             <div>
@@ -70,7 +70,7 @@
           <form
             id="loginForm"
             method="POST"
-            action="http://localhost:3001/api/auth/login"
+            action="http://localhost:3000/login"
             class="space-y-4"
           >
             <div>
@@ -132,7 +132,6 @@
           const loginForm = document.getElementById("loginForm");
           if (loginForm) {
             loginForm.addEventListener("submit", async (e) => {
-              e.preventDefault();
               const data = await postJson(loginForm, loginForm.action);
               if (data.ok) location.href = "/";
               else showError(data.error || "Login failed");
@@ -142,7 +141,6 @@
           const registerForm = document.getElementById("registerForm");
           if (registerForm) {
             registerForm.addEventListener("submit", async (e) => {
-              e.preventDefault();
               const data = await postJson(registerForm, registerForm.action);
               if (data.ok) location.href = "/";
               else showError(data.error || "Sign Up failed");
