@@ -69,6 +69,23 @@ export function createDashboardServer() {
     }
   });
 
+  app.get("/settings", requireAuth, async (req, res) => {
+    try {
+      res.render("settings", {
+        title: "Settings",
+        activePage: "settings",
+        user: req.user
+      });
+    } catch (err) {
+      console.error(err);
+      res.render("error", {
+        title: "Error",
+        message: "Error fetching profile settings",
+        tables: [],
+      });
+    }
+  });
+
   app.get("/", requireAuth, async (req, res) => {
     try {
       const response = await fetch("http://localhost:3001/api/get/tables");

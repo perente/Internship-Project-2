@@ -103,6 +103,53 @@ export function buildAuthRouter() {
     }
   });
 
+  router.post("/update_settings", async (req, res) => {
+    try {
+      const r = await fetch("http://localhost:3001/api/auth/update_settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: req.body.id,
+          username: req.body.username,
+          email: req.body.email,
+          password: req.body.password,
+        }),
+      });
+
+      const data = await r.json();
+      if (!data.ok) {
+        return res.render("settings", {
+          title: "Settings",
+          activePage: "settings",
+          user: req.user,
+          error: data.error || "Sign Up failed"
+        });
+      }
+
+      res.cookie("token", data.token, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax"
+      });
+
+      req.user = jwt.verify(data.token, "super-secret-key");
+
+      return res.render("settings", {
+        title: "Settings",
+        activePage: "settings",
+        user: req.user,
+        success: "Settings updated successfully."
+      });
+    } catch (e) {
+      return res.render("settings", {
+        title: "Settings",
+        activePage: "settings",
+        user: req.user,
+        error: "Server Error"
+      });
+    }
+  });
+
   router.get("/logout", (req, res) => {
     res.clearCookie("token");
     res.redirect("/login");

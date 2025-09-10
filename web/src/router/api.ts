@@ -503,6 +503,66 @@ export function createApiServer() {
     }
   });
 
+  authRouter.post("/update_settings", async (req: any, res) => {
+    const { id, username, email, password } = req.body || {};
+    if (!id || !username || !email) {
+      return res.json({ ok: false, error: "User ID, Username and Email required" });
+    }
+
+    const conn = await getConn();
+    try {
+      const existing = await conn.execute(
+          `SELECT ID FROM USERS WHERE (USERNAME = :u OR EMAIL = :e) AND ID != :id`,
+          { u: username, e: email, id }
+      );
+
+      if ((existing.rows || []).length > 0) {
+        return res.json({ ok: false, error: "Username or Email already exists" });
+      }
+
+      if (password && password.trim() !== "") {
+        await conn.execute(
+            `UPDATE USERS SET USERNAME = :u, EMAIL = :e, PASSWORD = :p WHERE ID = :id`,
+            { u: username, e: email, p: password, id },
+            { autoCommit: true }
+        );
+      } else {
+        await conn.execute(
+            `UPDATE USERS SET USERNAME = :u, EMAIL = :e WHERE ID = :id`,
+            { u: username, e: email, id },
+            { autoCommit: true }
+        );
+      }
+
+      const r = await conn.execute(
+          `SELECT ID, USERNAME, EMAIL FROM USERS WHERE ID = :id`,
+          { id }
+      );
+      const row = (r.rows || [])[0] as any;
+      if (!row) {
+        return res.json({ ok: false, error: "User not found after update" });
+      }
+
+      const [ID, USERNAME, EMAIL] = Array.isArray(row)
+          ? row
+          : [row.ID, row.USERNAME, row.EMAIL];
+
+      req.session.user = { id: ID, username: USERNAME, email: EMAIL };
+
+      const token = jwt.sign(
+          { id: ID, username: USERNAME, email: EMAIL },
+          "super-secret-key",
+          { expiresIn: "1h" }
+      );
+
+      return res.json({ ok: true, token });
+    } catch (err: any) {
+      return res.json({ ok: false, error: err.message });
+    } finally {
+      await conn.close();
+    }
+  });
+
   authRouter.post("/logout", (req: any, res) => {
     req.session.destroy(() => res.json({ ok: true }));
   });
