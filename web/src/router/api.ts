@@ -17,15 +17,17 @@ export function createApiServer() {
   app.use(express.json());
   app.use(cookieParser());
 
-  app.use(session({
-    secret: "super-secret-key",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      sameSite: "lax"
-    }
-  }));
+  app.use(
+    session({
+      secret: "super-secret-key",
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        sameSite: "lax",
+      },
+    })
+  );
 
   const getRouter = express.Router();
   const postRouter = express.Router();
@@ -354,18 +356,18 @@ export function createApiServer() {
         )
       );
       if (Object.keys(filtered).length === 0) {
-        return res.json({ ok: true }); 
+        return res.json({ ok: true });
       }
 
       const sets: string[] = [];
-      const binds: Record<string, any> = { pk: oldPkValue }; 
+      const binds: Record<string, any> = { pk: oldPkValue };
       let i = 0;
 
       for (const [col, raw] of Object.entries(filtered)) {
-        const b = `b${i++}`; 
-        const v = raw === "" ? null : raw; 
+        const b = `b${i++}`;
+        const v = raw === "" ? null : raw;
         sets.push(`${col} = :${b}`);
-        binds[b] = v; 
+        binds[b] = v;
       }
 
       const sql = `UPDATE ${tableName} SET ${sets.join(
@@ -431,36 +433,49 @@ export function createApiServer() {
     const conn = await getConn();
 
     const existing = await conn.execute(
-        `SELECT ID FROM USERS WHERE USERNAME = :u OR EMAIL = :e`,
-        { u: username, e: email }
+      `SELECT ID FROM USERS WHERE USERNAME = :u OR EMAIL = :e`,
+      { u: username, e: email }
     );
 
     if ((existing.rows || []).length > 0) {
       return res.json({
         ok: false,
-        error: "Username or Email already exists"
+        error: "Username or Email already exists",
       });
     }
 
     try {
       await conn.execute(
-          `INSERT INTO USERS (USERNAME, EMAIL, PASSWORD) VALUES (:u, :e, :p)`,
-          { u: username, e: email, p: password },
-          { autoCommit: true }
+        `INSERT INTO USERS (USERNAME, EMAIL, PASSWORD) VALUES (:u, :e, :p)`,
+        { u: username, e: email, p: password },
+        { autoCommit: true }
       );
 
       const r = await conn.execute(
-          `SELECT ID, USERNAME, EMAIL FROM USERS WHERE USERNAME=:u`,
-          { u: username }
+        `SELECT ID, USERNAME, EMAIL, CREATED_AT FROM USERS WHERE USERNAME=:u`,
+        { u: username }
       );
       const row = (r.rows || [])[0] as any;
-      const [ID, USERNAME, EMAIL] = Array.isArray(row)
-          ? row
-          : [row.ID, row.USERNAME, row.EMAIL];
+
+      const [ID, USERNAME, EMAIL, CREATED_AT] = Array.isArray(row)
+        ? row
+        : [row.ID, row.USERNAME, row.EMAIL, row.CREATED_AT];
 
       req.session.user = { id: ID, username: USERNAME, email: EMAIL };
 
-      const token = jwt.sign({ id: ID, username: USERNAME, email: EMAIL }, "super-secret-key", { expiresIn: "1h" });
+      const createdAtDate =
+        CREATED_AT instanceof Date ? CREATED_AT : new Date(CREATED_AT);
+
+      const token = jwt.sign(
+        {
+          id: ID,
+          username: USERNAME,
+          email: EMAIL,
+          created_at_display: DISPLAY_JS(createdAtDate),
+        },
+        "super-secret-key",
+        { expiresIn: "1h" }
+      );
 
       return res.json({ ok: true, token });
     } catch (err: any) {
@@ -473,27 +488,44 @@ export function createApiServer() {
   authRouter.post("/login", async (req: any, res) => {
     const { userOrEmail, password } = req.body || {};
     if (!userOrEmail || !password) {
-      return res.json({ ok: false, error: "Username/Email and Password required" });
+      return res.json({
+        ok: false,
+        error: "Username/Email and Password required",
+      });
     }
     const conn = await getConn();
     try {
       const r = await conn.execute(
-          `SELECT ID, USERNAME, EMAIL, PASSWORD FROM USERS WHERE USERNAME=:x OR EMAIL=:x`,
-          { x: userOrEmail }
+        `SELECT ID, USERNAME, EMAIL, PASSWORD, CREATED_AT
+       FROM USERS
+       WHERE USERNAME=:x OR EMAIL=:x`,
+        { x: userOrEmail }
       );
       const row = (r.rows || [])[0] as any;
       if (!row) return res.json({ ok: false, error: "User not found" });
 
-      const [ID, USERNAME, EMAIL, PASS] = Array.isArray(row)
-          ? row
-          : [row.ID, row.USERNAME, row.EMAIL, row.PASSWORD];
+      const [ID, USERNAME, EMAIL, PASS, CREATED_AT] = Array.isArray(row)
+        ? row
+        : [row.ID, row.USERNAME, row.EMAIL, row.PASSWORD, row.CREATED_AT];
 
       if (PASS !== password)
         return res.json({ ok: false, error: "Password is incorrect" });
 
       req.session.user = { id: ID, username: USERNAME, email: EMAIL };
 
-      const token = jwt.sign({ id: ID, username: USERNAME, email: EMAIL }, "super-secret-key", { expiresIn: "1h" });
+      const createdAtDate =
+        CREATED_AT instanceof Date ? CREATED_AT : new Date(CREATED_AT);
+
+      const token = jwt.sign(
+        {
+          id: ID,
+          username: USERNAME,
+          email: EMAIL,
+          created_at_display: DISPLAY_JS(createdAtDate), 
+        },
+        "super-secret-key",
+        { expiresIn: "1h" }
+      );
 
       return res.json({ ok: true, token });
     } catch (err: any) {
@@ -506,53 +538,67 @@ export function createApiServer() {
   authRouter.post("/update_settings", async (req: any, res) => {
     const { id, username, email, password } = req.body || {};
     if (!id || !username || !email) {
-      return res.json({ ok: false, error: "User ID, Username and Email required" });
+      return res.json({
+        ok: false,
+        error: "User ID, Username and Email required",
+      });
     }
 
     const conn = await getConn();
     try {
       const existing = await conn.execute(
-          `SELECT ID FROM USERS WHERE (USERNAME = :u OR EMAIL = :e) AND ID != :id`,
-          { u: username, e: email, id }
+        `SELECT ID FROM USERS WHERE (USERNAME = :u OR EMAIL = :e) AND ID != :id`,
+        { u: username, e: email, id }
       );
 
       if ((existing.rows || []).length > 0) {
-        return res.json({ ok: false, error: "Username or Email already exists" });
+        return res.json({
+          ok: false,
+          error: "Username or Email already exists",
+        });
       }
 
       if (password && password.trim() !== "") {
         await conn.execute(
-            `UPDATE USERS SET USERNAME = :u, EMAIL = :e, PASSWORD = :p WHERE ID = :id`,
-            { u: username, e: email, p: password, id },
-            { autoCommit: true }
+          `UPDATE USERS SET USERNAME = :u, EMAIL = :e, PASSWORD = :p WHERE ID = :id`,
+          { u: username, e: email, p: password, id },
+          { autoCommit: true }
         );
       } else {
         await conn.execute(
-            `UPDATE USERS SET USERNAME = :u, EMAIL = :e WHERE ID = :id`,
-            { u: username, e: email, id },
-            { autoCommit: true }
+          `UPDATE USERS SET USERNAME = :u, EMAIL = :e WHERE ID = :id`,
+          { u: username, e: email, id },
+          { autoCommit: true }
         );
       }
 
       const r = await conn.execute(
-          `SELECT ID, USERNAME, EMAIL FROM USERS WHERE ID = :id`,
-          { id }
+        `SELECT ID, USERNAME, EMAIL, CREATED_AT FROM USERS WHERE ID = :id`,
+        { id }
       );
       const row = (r.rows || [])[0] as any;
       if (!row) {
         return res.json({ ok: false, error: "User not found after update" });
       }
 
-      const [ID, USERNAME, EMAIL] = Array.isArray(row)
-          ? row
-          : [row.ID, row.USERNAME, row.EMAIL];
+      const [ID, USERNAME, EMAIL, CREATED_AT] = Array.isArray(row)
+        ? row
+        : [row.ID, row.USERNAME, row.EMAIL, row.CREATED_AT];
 
       req.session.user = { id: ID, username: USERNAME, email: EMAIL };
 
+      const createdAtDate =
+        CREATED_AT instanceof Date ? CREATED_AT : new Date(CREATED_AT);
+
       const token = jwt.sign(
-          { id: ID, username: USERNAME, email: EMAIL },
-          "super-secret-key",
-          { expiresIn: "1h" }
+        {
+          id: ID,
+          username: USERNAME,
+          email: EMAIL,
+          created_at_display: DISPLAY_JS(createdAtDate), 
+        },
+        "super-secret-key",
+        { expiresIn: "1h" }
       );
 
       return res.json({ ok: true, token });
