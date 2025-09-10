@@ -25,7 +25,7 @@ export function createDashboardServer() {
 
   app.use("/", buildAuthRouter());
 
-  app.get("/tables", requireAuth, async (_req, res) => {
+  app.get("/tables", requireAuth, async (req, res) => {
     try {
       const response = await fetch("http://localhost:3001/api/get/tables");
       const data = await response.json();
@@ -35,6 +35,7 @@ export function createDashboardServer() {
         title: "Tables",
         activePage: "tables",
         tables,
+        user: req.user
       });
     } catch (err) {
       console.error(err);
@@ -46,7 +47,7 @@ export function createDashboardServer() {
     }
   });
 
-  app.get("/crud", requireAuth, async (_req, res) => {
+  app.get("/crud", requireAuth, async (req, res) => {
     try {
       const response = await fetch("http://localhost:3001/api/get/tables");
       const data = await response.json();
@@ -56,6 +57,7 @@ export function createDashboardServer() {
         title: "CRUD",
         activePage: "crud",
         tables,
+        user: req.user
       });
     } catch (err) {
       console.error(err);
@@ -67,7 +69,7 @@ export function createDashboardServer() {
     }
   });
 
-  app.get("/", requireAuth, async (_req, res) => {
+  app.get("/", requireAuth, async (req, res) => {
     try {
       const response = await fetch("http://localhost:3001/api/get/tables");
       const data = await response.json();
@@ -77,6 +79,7 @@ export function createDashboardServer() {
         title: "Dashboard",
         activePage: "dashboard",
         tables,
+        user: req.user
       });
     } catch (err) {
       console.error(err);
@@ -88,7 +91,7 @@ export function createDashboardServer() {
     }
   });
 
-  app.get(/(.*)/, (_req, res) => {
+  app.get(/(.*)/, (req, res) => {
     res.redirect("/");
   });
 
