@@ -4,6 +4,7 @@ import session from "express-session";
 import { getConn, closePool } from "../db/oracle";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
+import { mapOracleUniqueToFriendly } from "../helpers/ci";
 
 export function createApiServer() {
   const app = express();
@@ -15,6 +16,7 @@ export function createApiServer() {
     })
   );
   app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
 
   app.use(
@@ -251,7 +253,7 @@ export function createApiServer() {
              COUNT(*) AS REQ_COUNT
       FROM API_REQUEST_LOG
       WHERE TARGET_TABLE = :tbl
-        AND request_src LIKE '%columnName=%'      -- sadece sütun özelinde olanlar
+        AND request_src LIKE '%columnName=%'  
       GROUP BY REGEXP_SUBSTR(request_src, 'columnName=([^&]+)', 1, 1, NULL, 1)
       ORDER BY REQ_COUNT DESC, COLUMN_NAME ASC
     `;
@@ -298,6 +300,73 @@ export function createApiServer() {
       res.json({ ok: false, error: e.message });
     } finally {
       await conn.close();
+    }
+  });
+
+  getRouter.get("/table_columns_info", async (req, res) => {
+    try {
+      const tableName = String(req.query.tableName || "").toUpperCase();
+      if (!tableName || !/^[A-Z0-9_]+$/.test(tableName)) {
+        return res
+          .status(400)
+          .json({ ok: false, error: "tableName required/invalid" });
+      }
+
+      const conn = await getConn();
+      try {
+        const sql = `
+        WITH nn AS (
+          SELECT DISTINCT acc.table_name, acc.column_name
+            FROM user_constraints ac
+            JOIN user_cons_columns acc ON ac.constraint_name = acc.constraint_name
+           WHERE ac.table_name = :t
+             AND ac.constraint_type = 'C'
+             AND (
+                  UPPER(ac.search_condition_vc) LIKE '%IS NOT NULL%'
+                  OR ac.constraint_name LIKE 'NN\\_%' ESCAPE '\\'
+                 )
+        )
+        SELECT utc.column_name,
+               utc.nullable,
+               utc.data_type,
+               CASE WHEN utc.nullable = 'N' OR nn.column_name IS NOT NULL THEN 'N' ELSE 'Y' END AS effective_nullable,
+               utc.data_default
+          FROM user_tab_columns utc
+          LEFT JOIN nn
+            ON nn.table_name = utc.table_name
+           AND nn.column_name = utc.column_name
+         WHERE utc.table_name = :t
+         ORDER BY utc.column_id
+      `;
+
+        const r = await conn.execute(sql, { t: tableName });
+        const columns = (r.rows || []).map((row: any) => {
+          const [NAME, NULLABLE, DATA_TYPE, EFFECTIVE_NULLABLE, DATA_DEFAULT] =
+            Array.isArray(row)
+              ? row
+              : [
+                  row.COLUMN_NAME,
+                  row.NULLABLE,
+                  row.DATA_TYPE,
+                  row.EFFECTIVE_NULLABLE,
+                  row.DATA_DEFAULT,
+                ];
+
+          return {
+            name: NAME,
+            nullable: NULLABLE, 
+            dataType: DATA_TYPE,
+            default: DATA_DEFAULT ?? null,
+            required: EFFECTIVE_NULLABLE === "N",
+          };
+        });
+
+        return res.json({ ok: true, columns });
+      } finally {
+        await conn.close();
+      }
+    } catch (e: any) {
+      return res.status(500).json({ ok: false, error: e.message });
     }
   });
 
@@ -355,6 +424,7 @@ export function createApiServer() {
           ([k]) => !(pkSet.has(k) || fkSet.has(k))
         )
       );
+
       if (Object.keys(filtered).length === 0) {
         return res.json({ ok: true });
       }
@@ -363,11 +433,45 @@ export function createApiServer() {
       const binds: Record<string, any> = { pk: oldPkValue };
       let i = 0;
 
-      for (const [col, raw] of Object.entries(filtered)) {
+      const TS_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+
+      for (const [col, rawVal] of Object.entries(filtered)) {
         const b = `b${i++}`;
-        const v = raw === "" ? null : raw;
-        sets.push(`${col} = :${b}`);
-        binds[b] = v;
+        const val = rawVal === "" ? null : rawVal;
+
+        const isDateLike = await (async () => {
+          const r = await conn.execute(
+            `SELECT DATA_TYPE FROM USER_TAB_COLUMNS
+             WHERE TABLE_NAME = :t AND COLUMN_NAME = :c`,
+            { t: tableName.toUpperCase(), c: col.toUpperCase() }
+          );
+          const dt = r.rows?.[0]?.[0] as string | undefined;
+          return !!dt && /^(DATE|TIMESTAMP)/i.test(dt);
+        })();
+
+        if (isDateLike) {
+          if (val === null) {
+            sets.push(`${col} = NULL`);
+            continue;
+          }
+
+          const s = String(val).trim();
+
+          if (TS_RE.test(s)) {
+            sets.push(`${col} = TO_TIMESTAMP(:${b}, 'YYYY-MM-DD HH24:MI:SS')`);
+            binds[b] = s;
+          } else {
+            i--;
+            continue;
+          }
+        } else {
+          sets.push(`${col} = :${b}`);
+          binds[b] = val;
+        }
+      }
+
+      if (sets.length === 0) {
+        return res.json({ ok: true });
       }
 
       const sql = `UPDATE ${tableName} SET ${sets.join(
@@ -479,7 +583,7 @@ export function createApiServer() {
 
       return res.json({ ok: true, token });
     } catch (err: any) {
-      return res.json({ ok: false, error: err.message });
+      return res.json({ ok: false, error: mapOracleUniqueToFriendly(err) });
     } finally {
       await conn.close();
     }
@@ -521,7 +625,7 @@ export function createApiServer() {
           id: ID,
           username: USERNAME,
           email: EMAIL,
-          created_at_display: DISPLAY_JS(createdAtDate), 
+          created_at_display: DISPLAY_JS(createdAtDate),
         },
         "super-secret-key",
         { expiresIn: "1h" }
@@ -529,7 +633,7 @@ export function createApiServer() {
 
       return res.json({ ok: true, token });
     } catch (err: any) {
-      return res.json({ ok: false, error: err.message });
+      return res.json({ ok: false, error: "Server error. Please try again." });
     } finally {
       await conn.close();
     }
@@ -537,28 +641,73 @@ export function createApiServer() {
 
   authRouter.post("/update_settings", async (req: any, res) => {
     const { id, username, email, password } = req.body || {};
+
     if (!id || !username || !email) {
-      return res.json({
-        ok: false,
-        error: "User ID, Username and Email required",
-      });
+      return res.redirect(
+        303,
+        "http://localhost:3000/settings?error=" +
+          encodeURIComponent("User ID, Username and Email are required")
+      );
     }
 
     const conn = await getConn();
     try {
-      const existing = await conn.execute(
-        `SELECT ID FROM USERS WHERE (USERNAME = :u OR EMAIL = :e) AND ID != :id`,
-        { u: username, e: email, id }
+      const meR = await conn.execute(
+        `SELECT ID, USERNAME, EMAIL FROM USERS WHERE ID = :id`,
+        { id }
       );
+      const me = (meR.rows || [])[0] as any;
+      if (!me) {
+        return res.redirect(
+          303,
+          "http://localhost:3000/settings?error=" +
+            encodeURIComponent("User not found")
+        );
+      }
+      const [ME_ID, ME_USERNAME, ME_EMAIL] = Array.isArray(me)
+        ? me
+        : [me.ID, me.USERNAME, me.EMAIL];
 
-      if ((existing.rows || []).length > 0) {
-        return res.json({
-          ok: false,
-          error: "Username or Email already exists",
-        });
+      const unameChanged =
+        String(username).toLowerCase() !==
+        String(ME_USERNAME ?? "").toLowerCase();
+      const emailChanged =
+        String(email).toLowerCase() !== String(ME_EMAIL ?? "").toLowerCase();
+
+      if (unameChanged || emailChanged) {
+        let whereParts: string[] = [];
+        const binds: any = { id };
+
+        if (unameChanged) {
+          whereParts.push(
+            `NLSSORT(USERNAME,'NLS_SORT=BINARY_CI') = NLSSORT(:u,'NLS_SORT=BINARY_CI')`
+          );
+          binds.u = username;
+        }
+        if (emailChanged) {
+          whereParts.push(
+            `NLSSORT(EMAIL,'NLS_SORT=BINARY_CI') = NLSSORT(:e,'NLS_SORT=BINARY_CI')`
+          );
+          binds.e = email;
+        }
+
+        const dupSql = `
+        SELECT 1 FROM USERS
+         WHERE ID <> :id
+           AND (${whereParts.join(" OR ")})
+           AND ROWNUM = 1`;
+
+        const dup = await conn.execute(dupSql, binds);
+        if ((dup.rows || []).length > 0) {
+          return res.redirect(
+            303,
+            "http://localhost:3000/settings?error=" +
+              encodeURIComponent("This username or email is already taken")
+          );
+        }
       }
 
-      if (password && password.trim() !== "") {
+      if (password && String(password).trim() !== "") {
         await conn.execute(
           `UPDATE USERS SET USERNAME = :u, EMAIL = :e, PASSWORD = :p WHERE ID = :id`,
           { u: username, e: email, p: password, id },
@@ -572,40 +721,63 @@ export function createApiServer() {
         );
       }
 
-      const r = await conn.execute(
-        `SELECT ID, USERNAME, EMAIL, CREATED_AT FROM USERS WHERE ID = :id`,
-        { id }
+      req.session.user = { id, username, email };
+      return res.redirect(
+        303,
+        "http://localhost:3000/settings?ok=" +
+          encodeURIComponent("Profile updated")
       );
-      const row = (r.rows || [])[0] as any;
-      if (!row) {
-        return res.json({ ok: false, error: "User not found after update" });
-      }
-
-      const [ID, USERNAME, EMAIL, CREATED_AT] = Array.isArray(row)
-        ? row
-        : [row.ID, row.USERNAME, row.EMAIL, row.CREATED_AT];
-
-      req.session.user = { id: ID, username: USERNAME, email: EMAIL };
-
-      const createdAtDate =
-        CREATED_AT instanceof Date ? CREATED_AT : new Date(CREATED_AT);
-
-      const token = jwt.sign(
-        {
-          id: ID,
-          username: USERNAME,
-          email: EMAIL,
-          created_at_display: DISPLAY_JS(createdAtDate), 
-        },
-        "super-secret-key",
-        { expiresIn: "1h" }
-      );
-
-      return res.json({ ok: true, token });
     } catch (err: any) {
-      return res.json({ ok: false, error: err.message });
+      return res.redirect(
+        303,
+        "http://localhost:3000/settings?error=" +
+          encodeURIComponent(mapOracleUniqueToFriendly(err))
+      );
     } finally {
       await conn.close();
+    }
+  });
+
+  authRouter.get("/me", async (req: any, res) => {
+    try {
+      const sess = req.session?.user;
+      if (!sess?.id) {
+        return res.json({ ok: false, error: "Not authenticated" });
+      }
+      const conn = await getConn();
+      try {
+        const r = await conn.execute(
+          `SELECT ID, USERNAME, EMAIL, CREATED_AT FROM USERS WHERE ID = :id`,
+          { id: sess.id }
+        );
+        const row = (r.rows || [])[0] as any;
+        if (!row) return res.json({ ok: false, error: "User not found" });
+
+        const [ID, USERNAME, EMAIL, CREATED_AT] = Array.isArray(row)
+          ? row
+          : [row.ID, row.USERNAME, row.EMAIL, row.CREATED_AT];
+
+        const pad = (n: number) => String(n).padStart(2, "0");
+        const d =
+          CREATED_AT instanceof Date ? CREATED_AT : new Date(CREATED_AT);
+        const createdAtDisplay =
+          `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+          `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
+        return res.json({
+          ok: true,
+          user: {
+            id: ID,
+            username: USERNAME,
+            email: EMAIL,
+            createdAtDisplay,
+          },
+        });
+      } finally {
+        await conn.close();
+      }
+    } catch (e: any) {
+      return res.json({ ok: false, error: "Server error" });
     }
   });
 

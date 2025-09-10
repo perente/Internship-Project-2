@@ -1,4 +1,4 @@
-<header class="grid grid-cols-3 items-center bg-white shadow px-3 py-2">
+<header class="grid grid-cols-3 items-center bg-white shadow px-3 py-2 relative z-10">
   <div class="flex items-center space-x-3">
     <img src="/img/turkcell.png" alt="Logo" class="w-12 h-12 rounded-full object-contain filter invert">
     <span class="text-3xl font-bold">DB Tools</span>
@@ -9,7 +9,7 @@
   </div>
 
   <% if (typeof user !== 'undefined' && user.username != null) { %>
-    <div class="relative flex justify-end mr-3">
+    <div class="relative flex justify-end mr-3 z-10">
       <button id="userMenuButton" class="flex items-center space-x-2 text-lg font-medium focus:outline-none">
         <span><%= user.username %></span>
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -17,7 +17,7 @@
         </svg>
       </button>
 
-      <div id="userMenu" class="hidden absolute right-2 mt-10 w-48 bg-white border rounded-lg shadow-lg py-2">
+      <div id="userMenu" class="hidden absolute right-2 mt-10 w-48 bg-white border rounded-lg shadow-lg py-2 z-10">
         <a href="/settings" class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2">
