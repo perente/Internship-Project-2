@@ -100,6 +100,32 @@ export function createApiServer() {
     }
   });
 
+  getRouter.use(async (req, _res, next) => {
+    try {
+      if (req.path.startsWith("/logs")) return next();
+
+      const tbl =
+        (req.query.tableName as string) || (req.query.table as string) || null;
+
+      if (tbl && /^[A-Z0-9_]+$/i.test(tbl)) {
+        const conn = await getConn();
+        try {
+          await conn.execute(
+            `INSERT INTO API_REQUEST_LOG (TARGET_TABLE, REQUEST_SRC, CREATED_AT)
+           VALUES (:t, :src, SYSTIMESTAMP)`,
+            { t: String(tbl).toUpperCase(), src: req.originalUrl },
+            { autoCommit: true }
+          );
+        } finally {
+          await conn.close();
+        }
+      }
+    } catch (e) {
+      console.error("log middleware error", e);
+    }
+    next();
+  });
+
   getRouter.get("/table_data", async (req, res) => {
     try {
       const tableName = req.query.tableName as string;
@@ -354,7 +380,7 @@ export function createApiServer() {
 
           return {
             name: NAME,
-            nullable: NULLABLE, 
+            nullable: NULLABLE,
             dataType: DATA_TYPE,
             default: DATA_DEFAULT ?? null,
             required: EFFECTIVE_NULLABLE === "N",
