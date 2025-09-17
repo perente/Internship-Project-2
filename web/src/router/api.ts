@@ -5,6 +5,12 @@ import { getConn, closePool } from "../db/oracle";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 import { mapOracleUniqueToFriendly } from "../helpers/ci";
+import multer from 'multer'
+import sharp from 'sharp'
+import path from 'path'
+import { promises as fs } from 'fs'
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 export function createApiServer() {
   const app = express();
@@ -30,6 +36,8 @@ export function createApiServer() {
       },
     })
   );
+
+  app.use("/uploads", express.static("public/uploads"));
 
   const getRouter = express.Router();
   const postRouter = express.Router();
@@ -665,40 +673,69 @@ export function createApiServer() {
     }
   });
 
-  authRouter.post("/update_settings", async (req: any, res) => {
+  authRouter.post("/update_settings", upload.single('avatar'), async (req: any, res) => {
     const { id, username, email, password } = req.body || {};
 
     if (!id || !username || !email) {
       return res.redirect(
-        303,
-        "http://localhost:3000/settings?error=" +
+          303,
+          "http://localhost:3000/settings?error=" +
           encodeURIComponent("User ID, Username and Email are required")
       );
+    }
+
+    const uploadsDir = path.resolve(__dirname, '..', 'public', 'uploads');
+    await fs.mkdir(uploadsDir, { recursive: true });
+
+    // Avatar kaydı
+    if (req.file) {
+      try {
+        if (!req.file.mimetype.startsWith('image/')) {
+          return res.redirect(
+              303,
+              "http://localhost:3000/settings?error=" +
+              encodeURIComponent("Uploaded file must be an image")
+          );
+        }
+
+        const avatarPath = path.join(uploadsDir, `${id}.webp`);
+        await sharp(req.file.buffer)
+            .resize(512, 512, { fit: 'cover' })
+            .webp({ quality: 85 })
+            .toFile(avatarPath);
+      } catch (err: any) {
+        console.error("Avatar processing error:", err);
+        return res.redirect(
+            303,
+            "http://localhost:3000/settings?error=" +
+            encodeURIComponent("Failed to process avatar: " + String(err))
+        );
+      }
     }
 
     const conn = await getConn();
     try {
       const meR = await conn.execute(
-        `SELECT ID, USERNAME, EMAIL FROM USERS WHERE ID = :id`,
-        { id }
+          `SELECT ID, USERNAME, EMAIL FROM USERS WHERE ID = :id`,
+          { id }
       );
       const me = (meR.rows || [])[0] as any;
       if (!me) {
         return res.redirect(
-          303,
-          "http://localhost:3000/settings?error=" +
+            303,
+            "http://localhost:3000/settings?error=" +
             encodeURIComponent("User not found")
         );
       }
+
       const [ME_ID, ME_USERNAME, ME_EMAIL] = Array.isArray(me)
-        ? me
-        : [me.ID, me.USERNAME, me.EMAIL];
+          ? me
+          : [me.ID, me.USERNAME, me.EMAIL];
 
       const unameChanged =
-        String(username).toLowerCase() !==
-        String(ME_USERNAME ?? "").toLowerCase();
+          String(username).toLowerCase() !== String(ME_USERNAME ?? "").toLowerCase();
       const emailChanged =
-        String(email).toLowerCase() !== String(ME_EMAIL ?? "").toLowerCase();
+          String(email).toLowerCase() !== String(ME_EMAIL ?? "").toLowerCase();
 
       if (unameChanged || emailChanged) {
         let whereParts: string[] = [];
@@ -706,28 +743,28 @@ export function createApiServer() {
 
         if (unameChanged) {
           whereParts.push(
-            `NLSSORT(USERNAME,'NLS_SORT=BINARY_CI') = NLSSORT(:u,'NLS_SORT=BINARY_CI')`
+              `NLSSORT(USERNAME,'NLS_SORT=BINARY_CI') = NLSSORT(:u,'NLS_SORT=BINARY_CI')`
           );
           binds.u = username;
         }
         if (emailChanged) {
           whereParts.push(
-            `NLSSORT(EMAIL,'NLS_SORT=BINARY_CI') = NLSSORT(:e,'NLS_SORT=BINARY_CI')`
+              `NLSSORT(EMAIL,'NLS_SORT=BINARY_CI') = NLSSORT(:e,'NLS_SORT=BINARY_CI')`
           );
           binds.e = email;
         }
 
         const dupSql = `
-        SELECT 1 FROM USERS
-         WHERE ID <> :id
-           AND (${whereParts.join(" OR ")})
-           AND ROWNUM = 1`;
+          SELECT 1 FROM USERS
+          WHERE ID <> :id
+            AND (${whereParts.join(" OR ")})
+            AND ROWNUM = 1`;
 
         const dup = await conn.execute(dupSql, binds);
         if ((dup.rows || []).length > 0) {
           return res.redirect(
-            303,
-            "http://localhost:3000/settings?error=" +
+              303,
+              "http://localhost:3000/settings?error=" +
               encodeURIComponent("This username or email is already taken")
           );
         }
@@ -735,32 +772,33 @@ export function createApiServer() {
 
       if (password && String(password).trim() !== "") {
         await conn.execute(
-          `UPDATE USERS SET USERNAME = :u, EMAIL = :e, PASSWORD = :p WHERE ID = :id`,
-          { u: username, e: email, p: password, id },
-          { autoCommit: true }
+            `UPDATE USERS SET USERNAME = :u, EMAIL = :e, PASSWORD = :p WHERE ID = :id`,
+            { u: username, e: email, p: password, id },
+            { autoCommit: true }
         );
       } else {
         await conn.execute(
-          `UPDATE USERS SET USERNAME = :u, EMAIL = :e WHERE ID = :id`,
-          { u: username, e: email, id },
-          { autoCommit: true }
+            `UPDATE USERS SET USERNAME = :u, EMAIL = :e WHERE ID = :id`,
+            { u: username, e: email, id },
+            { autoCommit: true }
         );
       }
 
       req.session.user = { id, username, email };
       return res.redirect(
-        303,
-        "http://localhost:3000/settings?ok=" +
+          303,
+          "http://localhost:3000/settings?ok=" +
           encodeURIComponent("Profile updated")
       );
     } catch (err: any) {
+      console.error("Update settings error:", err);
       return res.redirect(
-        303,
-        "http://localhost:3000/settings?error=" +
-          encodeURIComponent(mapOracleUniqueToFriendly(err))
+          303,
+          "http://localhost:3000/settings?error=" +
+          encodeURIComponent("Failed to update profile")
       );
     } finally {
-      await conn.close();
+      try { await conn.close(); } catch (e) {}
     }
   });
 

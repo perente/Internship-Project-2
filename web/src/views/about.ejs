@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('layouts/head', {title: "About Us"}) %>
+<body class="flex h-screen bg-gray-100">
+<%- include("layouts/sidebar") %>
+
+<div class="flex flex-col flex-1">
+    <%- include("layouts/header", {user: user}) %>
+
+    <main class="p-6 overflow-auto flex justify-center items-center">
+        <div class="bg-white shadow-lg rounded-lg p-8 max-w-4xl w-full">
+            <div class="mb-6 text-center">
+                <p class="text-gray-700">
+                    This project was developed by Alican and Rampia, interns at Turkcell Technology's Fixed Campaign Solutions team. The purpose of the project is to improve the analysis and management of the pre-production and test databases used by the team. In this project, we worked on Oracle DB, using Node.js for the backend and TailwindCSS for the frontend.
+                </p>
+            </div>
+
+            <hr class="my-8">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="flex flex-col items-center text-center">
+                    <img src="/img/alican.jpg" alt="Alican" class="w-32 h-32 rounded-full object-cover mb-4">
+                    <h2 class="text-xl font-semibold mb-2">Alican Çopur</h2>
+                    <p class="text-gray-600 mb-4">
+                        A first-year Artificial Intelligence Engineering student at Hacettepe University. Previously worked on web development and database management, and developed server-side applications with Java. Also gained experience with languages such as Kotlin and PHP.
+                    </p>
+                    <div class="flex gap-3">
+                        <a href="https://www.linkedin.com/in/alicancopur/" target="_blank"
+                           class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                            LinkedIn
+                        </a>
+                        <a href="https://github.com/AlicanCopur" target="_blank"
+                           class="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-900 transition">
+                            GitHub
+                        </a>
+                    </div>
+                </div>
+
+                <div class="flex flex-col items-center text-center">
+                    <img src="/img/rampia.jpg" alt="Rampia" class="w-32 h-32 rounded-full object-cover mb-4">
+                    <h2 class="text-xl font-semibold mb-2">Rampia Perente</h2>
+                    <p class="text-gray-600 mb-4">
+                        A senior Computer Engineering student at Istanbul Technical University. Passionate about personal and technical growth, with experience in volunteering, specialized bootcamps, and hands-on projects. Focused on gaining practical skills and contributing effectively to the tech industry.
+                    </p>
+                    <div class="flex gap-3">
+                        <a href="https://www.linkedin.com/in/rampia-perente-022604208/" target="_blank"
+                           class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                            LinkedIn
+                        </a>
+                        <a href="https://github.com/perente/" target="_blank"
+                           class="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-900 transition">
+                            GitHub
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+</body>
+</html>

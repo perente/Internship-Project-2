@@ -8,14 +8,12 @@
       <%- include("layouts/header") %>
 
       <main class="p-6 overflow-auto relative">
-        <!-- Search / Filter / Insert -->
         <form
           id="searchForm"
           class="bg-white p-6 rounded-lg shadow-md max-w-5xl mx-auto mb-6 relative z-30"
         >
 
           <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-            <!-- Table select -->
             <div>
               <label for="tableSelect" class="block font-semibold mb-1">
                 Select table:
@@ -32,7 +30,6 @@
               </select>
             </div>
 
-            <!-- Column select -->
             <div>
               <label for="columnSelect" class="block font-semibold mb-1">
                 Filter by column:
@@ -46,7 +43,6 @@
               </select>
             </div>
 
-            <!-- Value + suggestions -->
             <div class="relative">
               <label for="rowValue" class="block font-semibold mb-1">
                 Filter value:
@@ -68,7 +64,6 @@
             </div>
           </div>
 
-          <!-- Actions row -->
           <div class="flex flex-wrap items-center gap-2">
             <button
               type="submit"
@@ -106,10 +101,8 @@
           </div>
         </form>
 
-        <!-- Data table result -->
         <div id="result" class="max-w-6xl mx-auto overflow-auto"></div>
 
-        <!-- Delete Modal -->
         <div
           id="deleteModal"
           class="fixed inset-0 bg-black/40 flex items-center justify-center hidden z-50"
@@ -136,7 +129,6 @@
           </div>
         </div>
 
-        <!-- Insert Modal -->
         <div
           id="insertModal"
           class="fixed inset-0 bg-black/40 flex items-center justify-center hidden z-50"
@@ -167,7 +159,6 @@
           </div>
         </div>
 
-        <!-- Edit Modal -->
         <div
           id="editModal"
           class="fixed inset-0 bg-black/40 flex items-center justify-center hidden z-50"

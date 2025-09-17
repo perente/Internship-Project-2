@@ -105,6 +105,25 @@ export function createDashboardServer() {
     }
   });
 
+  app.get("/about", requireAuth, async (req: any, res) => {
+    try {
+      const freshUser = await fetchMe(req);
+
+      res.render("about", {
+        title: "About Us",
+        activePage: "about",
+        user: freshUser || req.user
+      });
+    } catch (err) {
+      console.error(err);
+      res.render("error", {
+        title: "Error",
+        message: "Error fetching profile settings",
+        tables: [],
+      });
+    }
+  });
+
   app.get("/", requireAuth, async (req: any, res) => {
     try {
       const freshUser = await fetchMe(req);
